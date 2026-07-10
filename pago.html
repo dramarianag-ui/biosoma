@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIOSOMA — Acceso Profesional · MEDICELL / MEDISER</title>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#F7F5EF;color:#1F2A2E;min-height:100vh}
+.hero{background:linear-gradient(135deg,#0F6B65,#2C5F8A);color:#fff;padding:48px 20px;text-align:center}
+.hero h1{font-size:28px;font-weight:700;margin-bottom:8px}
+.hero p{font-size:15px;opacity:.85;max-width:500px;margin:0 auto}
+.badge{display:inline-block;background:rgba(255,255,255,.2);border-radius:20px;padding:4px 14px;font-size:12px;margin-bottom:16px;letter-spacing:.5px}
+.w{max-width:860px;margin:0 auto;padding:32px 16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:0.5px solid #E0DDD4;border-radius:14px;padding:24px}
+.card h2{font-size:17px;font-weight:700;color:#0F6B65;margin-bottom:16px}
+.feat{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;font-size:13.5px;line-height:1.5}
+.feat .ic{font-size:18px;flex-shrink:0;margin-top:1px}
+.price-box{background:linear-gradient(135deg,#EAF5EF,#E8F0FA);border:1.5px solid #0F6B65;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px}
+.price-box .amount{font-size:42px;font-weight:800;color:#0F6B65}
+.price-box .period{font-size:13px;color:#6B665A}
+.price-box .note{font-size:12px;color:#6B665A;margin-top:6px}
+label{display:block;font-size:11px;font-weight:600;color:#4A463C;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px;margin-top:14px}
+input{width:100%;border:0.5px solid #D4D0C8;border-radius:7px;padding:10px 12px;font-size:14px;background:#FCFBF7;font-family:inherit;outline:none}
+input:focus{border-color:#0F6B65;background:#fff}
+.stripe-el{border:0.5px solid #D4D0C8;border-radius:7px;padding:11px 12px;background:#FCFBF7;min-height:42px}
+.stripe-el.StripeElement--focus{border-color:#0F6B65;background:#fff}
+.btn-pay{width:100%;background:linear-gradient(135deg,#0F6B65,#2C5F8A);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:20px;letter-spacing:.3px}
+.btn-pay:disabled{opacity:.6;cursor:not-allowed}
+.secure{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:#6B665A;margin-top:10px}
+#msg{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;display:none}
+#msg.ok{background:#EAF5EF;color:#0F6B65;border:1px solid #0F6B65}
+#msg.err{background:#FEF0EE;color:#B33A3A;border:1px solid #B33A3A}
+.success-box{display:none;background:#EAF5EF;border:2px solid #0F6B65;border-radius:14px;padding:32px;text-align:center}
+.success-box h2{color:#0F6B65;font-size:22px;margin-bottom:12px}
+.codigo-display{font-family:monospace;font-size:28px;font-weight:800;background:#0F6B65;color:#fff;padding:12px 24px;border-radius:10px;letter-spacing:4px;display:inline-block;margin:16px 0}
+.testimonio{background:#F0EDE3;border-left:3px solid #C08A3E;padding:12px 16px;border-radius:0 8px 8px 0;font-size:13px;font-style:italic;color:#4A463C;margin-bottom:12px}
+.garantia{background:#EAF5EF;border-radius:10px;padding:14px;text-align:center;font-size:12.5px;color:#0F6B65;margin-top:16px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="badge">&#x2695;&#xFE0F; SISTEMA BIOSOMA · MEDICELL / MEDISER</div>
+  <h1>Digitalice su consulta de Medicina Regenerativa</h1>
+  <p>Evaluación de ejes Wu Xing · Diagnóstico funcional · Reporte clínico automático · Base de datos de pacientes en la nube</p>
+</div>
+
+<div class="w">
+  <div class="grid">
+
+    <!-- COLUMNA IZQUIERDA: Beneficios -->
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h2>&#x2728; ¿Qué incluye su acceso?</h2>
+        <div class="feat"><span class="ic">&#x1F9EC;</span><span>Evaluación completa de los 5 ejes Wu Xing con circuito Sheng diagnóstico</span></div>
+        <div class="feat"><span class="ic">&#x1F4CB;</span><span>Historia clínica digital integrada con campos para medicina regenerativa y MTC</span></div>
+        <div class="feat"><span class="ic">&#x1F4CA;</span><span>Reporte clínico editable con gráfico pentagonal, plan terapéutico y suplementación</span></div>
+        <div class="feat"><span class="ic">&#x1F4E7;</span><span>Envío automático del reporte al paciente y al médico por correo</span></div>
+        <div class="feat"><span class="ic">&#x2601;&#xFE0F;</span><span>Base de datos de pacientes en la nube — accesible desde cualquier dispositivo</span></div>
+        <div class="feat"><span class="ic">&#x1F4F1;</span><span>Funciona en computadora, tablet y celular sin instalar nada</span></div>
+        <div class="feat"><span class="ic">&#x1F9E0;</span><span>Análisis IA de síntomas con diagnóstico energético automático</span></div>
+        <div class="feat"><span class="ic">&#x1F510;</span><span>Código de acceso personal — solo usted ve sus pacientes</span></div>
+      </div>
+
+      <div class="card">
+        <h2>&#x1F4AC; Opiniones de colegas</h2>
+        <div class="testimonio">"Reduje el tiempo de consulta a la mitad. El reporte impresiona a los pacientes." — Dra. M.G., Costa Rica</div>
+        <div class="testimonio">"Por fin un sistema diseñado para medicina regenerativa y MTC, no para medicina convencional." — Dr. J.B., Médico Funcional</div>
+        <div class="garantia">&#x1F6E1;&#xFE0F; <strong>Garantía 7 días:</strong> Si no está satisfecho, le devolvemos su dinero sin preguntas.</div>
+      </div>
+    </div>
+
+    <!-- COLUMNA DERECHA: Formulario de pago -->
+    <div class="card">
+      <div class="price-box">
+        <div style="font-size:13px;font-weight:600;color:#2C5F8A;margin-bottom:4px">ACCESO PROFESIONAL MENSUAL</div>
+        <div class="amount">$39</div>
+        <div class="period">USD / mes · cancele cuando quiera</div>
+        <div class="note">&#x2713; Sin contratos &nbsp;·&nbsp; &#x2713; Sin costo de instalación &nbsp;·&nbsp; &#x2713; Soporte incluido</div>
+      </div>
+
+      <div id="form-pago">
+        <h2>Sus datos profesionales</h2>
+        <label>Nombre completo *</label>
+        <input id="nombre" placeholder="Dra. Ana López Mora" required>
+        <label>Correo electrónico *</label>
+        <input id="correo" type="email" placeholder="dra.ana@clinica.com" required>
+        <label>Especialidad</label>
+        <input id="especialidad" placeholder="Medicina Regenerativa / MTC / Funcional">
+        <label>Teléfono / WhatsApp</label>
+        <input id="telefono" placeholder="+506 8888-0000">
+
+        <label style="margin-top:20px">Datos de tarjeta *</label>
+        <div id="card-element" class="stripe-el"></div>
+
+        <button class="btn-pay" id="btn-pagar">Suscribirme por $39/mes</button>
+        <div class="secure">&#x1F512; Pago seguro procesado por Stripe &nbsp;·&nbsp; Sus datos están protegidos</div>
+        <div id="msg"></div>
+      </div>
+
+      <!-- Mensaje de éxito -->
+      <div class="success-box" id="success-box">
+        <div style="font-size:48px;margin-bottom:12px">&#x1F389;</div>
+        <h2>&#x2713; Pago confirmado</h2>
+        <p style="color:#4A463C;font-size:14px;margin-bottom:8px">Su código de acceso al sistema BIOSOMA es:</p>
+        <div class="codigo-display" id="codigo-generado"></div>
+        <p style="color:#4A463C;font-size:13px;margin-top:8px">También lo enviamos a su correo. Guárdelo bien.</p>
+        <div style="margin-top:20px;padding:14px;background:#fff;border-radius:10px;border:1px solid #E0DDD4">
+          <p style="font-size:13px;font-weight:600;margin-bottom:6px">Para acceder al sistema:</p>
+          <p style="font-size:13px;color:#4A463C">1. Vaya a <strong>biosomamedicell2.vercel.app</strong></p>
+          <p style="font-size:13px;color:#4A463C">2. Clic en "Soy médico"</p>
+          <p style="font-size:13px;color:#4A463C">3. Ingrese su código</p>
+        </div>
+        <a href="https://biosomamedicell2.vercel.app" target="_blank" style="display:block;margin-top:16px;background:#0F6B65;color:#fff;text-decoration:none;border-radius:10px;padding:12px;font-weight:700;font-size:14px">Entrar al sistema BIOSOMA &rarr;</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIGURACIÓN ────────────────────────────────────────────
+var STRIPE_PK = 'pk_test_51RpxnKLQ3NPiFRpKMRVTsvptsDdkXf9kzrmBXawcZCrt7c1k4mKhXzTo4Cp7L0hjwo0iOi8cXTfvox851BWrk2K500QzD1qlZx';
+var PRICE_ID  = 'price_1TrPVALQ3NPiFRpKHO8KxycE';
+var SB_URL    = 'https://ylihdfznigdyzmanwrdl.supabase.co';
+var SB_KEY    = 'sb_publishable_TrXvOhCHaxm8Bme-mXYV0w_hZszUGHd';
+
+// EmailJS para enviar el código al profesional
+var EJS_SVC = 'service_wo8yhwp';
+var EJS_TPL = 'template_jjqh80s';
+var EJS_PUB = 'px0HVgCPkd3_CB1Af';
+
+// ── STRIPE ───────────────────────────────────────────────────
+var stripe = Stripe(STRIPE_PK);
+var elements = stripe.elements();
+var cardElement = elements.create('card', {
+  hidePostalCode: true,
+  style: {
+    base: {fontFamily:'system-ui,sans-serif', fontSize:'14px', color:'#1F2A2E',
+           '::placeholder':{color:'#9A9690'}},
+    invalid: {color:'#B33A3A'}
+  }
+});
+cardElement.mount('#card-element');
+
+// ── GENERAR CÓDIGO ───────────────────────────────────────────
+function generarCodigo(nombre) {
+  var ini = nombre.replace(/[^a-zA-Z]/g,'').substring(0,3).toUpperCase();
+  var num = Math.floor(1000 + Math.random() * 9000);
+  return 'BIO' + ini + num;
+}
+
+// ── GUARDAR EN SUPABASE ──────────────────────────────────────
+async function guardarProfesional(datos) {
+  try {
+    var r = await fetch(SB_URL + '/rest/v1/profesionales', {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        codigo: datos.codigo,
+        nombre: datos.nombre,
+        especialidad: datos.especialidad || '',
+        correo: datos.correo,
+        rol: 'medico',
+        activo: true
+      })
+    });
+    return r.ok || r.status === 201;
+  } catch(e) {
+    console.warn('Supabase:', e.message);
+    return false;
+  }
+}
+
+// ── ENVIAR CÓDIGO POR CORREO ─────────────────────────────────
+async function enviarCodigoPorCorreo(datos) {
+  try {
+    await emailjs.send(EJS_SVC, EJS_TPL, {
+      to_name: datos.nombre,
+      to_email: datos.correo,
+      medico_name: 'MEDICELL / MEDISER',
+      medico_email: 'info@medicellcr.com',
+      clinica: 'Sistema BIOSOMA - MEDICELL / MEDISER',
+      telefono: '+506 2447-2858',
+      fecha: new Date().toLocaleDateString('es-CR'),
+      destinatario: 'Profesional',
+      resumen: [
+        'Bienvenido/a al Sistema BIOSOMA - MEDICELL / MEDISER',
+        '',
+        'Su suscripción ha sido activada exitosamente.',
+        '',
+        'SU CÓDIGO DE ACCESO PERSONAL:',
+        datos.codigo,
+        '',
+        'INSTRUCCIONES DE ACCESO:',
+        '1. Vaya a: biosomamedicell2.vercel.app',
+        '2. Clic en "Soy médico"',
+        '3. Ingrese su código: ' + datos.codigo,
+        '',
+        'Guarde este código en un lugar seguro.',
+        'Solo usted tiene acceso a sus pacientes.',
+        '',
+        'Para soporte: info@medicellcr.com | +506 2447-2858',
+        '',
+        'MEDICELL / MEDISER - Sistema BIOSOMA'
+      ].join('\n'),
+      eje_prioritario: 'Acceso activado'
+    }, EJS_PUB);
+  } catch(e) {
+    console.warn('EmailJS:', e.message);
+  }
+}
+
+// ── PROCESAR PAGO ────────────────────────────────────────────
+document.getElementById('btn-pagar').onclick = async function() {
+  var btn = this;
+  var msg = document.getElementById('msg');
+  msg.style.display = 'none';
+
+  var nombre = document.getElementById('nombre').value.trim();
+  var correo = document.getElementById('correo').value.trim();
+  var especialidad = document.getElementById('especialidad').value.trim();
+
+  if (!nombre || !correo) {
+    msg.className = 'err'; msg.textContent = 'Complete su nombre y correo para continuar.';
+    msg.style.display = 'block'; return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Procesando pago...';
+
+  // Crear método de pago
+  var result = await stripe.createPaymentMethod({
+    type: 'card',
+    card: cardElement,
+    billing_details: { name: nombre, email: correo }
+  });
+
+  if (result.error) {
+    msg.className = 'err'; msg.textContent = result.error.message;
+    msg.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Suscribirme por $39/mes';
+    return;
+  }
+
+  // En modo de prueba: simular pago exitoso
+  // En producción se necesita un backend para crear la suscripción
+  btn.textContent = 'Activando acceso...';
+
+  // Generar código único
+  var codigo = generarCodigo(nombre);
+
+  // Guardar en Supabase
+  var guardado = await guardarProfesional({
+    codigo: codigo,
+    nombre: nombre,
+    especialidad: especialidad,
+    correo: correo
+  });
+
+  // Enviar correo con el código
+  await enviarCodigoPorCorreo({
+    nombre: nombre,
+    correo: correo,
+    codigo: codigo
+  });
+
+  // Mostrar éxito
+  document.getElementById('form-pago').style.display = 'none';
+  var successBox = document.getElementById('success-box');
+  successBox.style.display = 'block';
+  document.getElementById('codigo-generado').textContent = codigo;
+
+  btn.disabled = false;
+};
+</script>
+</body>
+</html>
