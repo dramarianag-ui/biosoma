@@ -87,7 +87,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         codigo: codigoProfesional,
         nombre: nombre || '',
-        email: email,
+        correo: email,
         especialidad: especialidad || '',
         rol: 'medico',
         paypal_subscription_id: subscriptionID,
