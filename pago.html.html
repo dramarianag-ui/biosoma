@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIOSOMA — Acceso Profesional · MEDICELL / MEDISER</title>
+<script src="https://sdk.onvopay.com/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; background: #F7F5EF; color: #1F2A2E; min-height: 100vh; text-align: center; }
+.hero { background: linear-gradient(135deg, #0F6B65, #2C5F8A); color: #fff; padding: 48px 20px; text-align: center; }
+.hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+.hero p { font-size: 15px; opacity: 0.85; max-width: 500px; margin: 0 auto; }
+.insignia { display: inline-block; background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 14px; font-size: 12px; margin-bottom: 16px; letter-spacing: .5px; }
+.w { max-width: 860px; margin: 0 auto; padding: 32px 16px; }
+.red { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 640px) { .red { grid-template-columns: 1fr; } }
+.tarjeta { background: #fff; border: 0.5px solid #E0DDD4; border-radius: 14px; padding: 24px; }
+.tarjeta h2 { font-size: 17px; font-weight: 700; color: #0F6B65; margin-bottom: 16px; }
+.logro { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; font-size: 13.5px; line-height: 1.5; text-align: left; }
+.logro .ic { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.cuadro-precio { background: linear-gradient(135deg, #EAF5EF, #E8F0FA); border: 1.5px solid #0F6B65; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; }
+.cuadro-precio .cantidad { font-size: 42px; font-weight: 800; color: #0F6B65; }
+.cuadro-precio .periodo { font-size: 13px; color: #6B665A; }
+.cuadro-precio .nota { font-size: 12px; color: #6B665A; margin-top: 6px; }
+label { display: block; text-align: left; font-size: 11px; font-weight: 600; color: #4A463C; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 4px; margin-top: 14px; }
+input { width: 100%; border: 0.5px solid #D4D0C8; border-radius: 7px; padding: 10px 12px; font-size: 14px; font: inherit; display: block; background: #FCFBF7; }
+input:focus { outline: none; border-color: #0F6B65; background: #fff; }
+#contenedor-pago-onvo { margin-top: 20px; min-height: 20px; }
+.seguro { display: block; text-align: center; margin-top: 6px; font-size: 11px; color: #6B665A; margin-bottom: 10px; }
+#mensaje { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; }
+#mensaje.OK { background: #EAF5EF; color: #0F6B65; border: 1px solid #0F6B65; }
+#mensaje.error { background: #FEF0EE; color: #B33A3A; border: 1px solid #B33A3A; }
+#mensaje.información { background: #FFFBF2; color: #8B6010; border: 1px solid #E9CE8C; }
+.cuadro-exito { display: none; background: #EAF5EF; border: 2px solid #0F6B65; border-radius: 14px; padding: 32px; text-align: center; }
+.cuadro-exito h2 { color: #0F6B65; font-size: 22px; margin-bottom: 12px; }
+.visualizacion-codigo { font-family: monospace; font-size: 28px; font-weight: 800; color: #0F6B65; background: #fff; padding: 12px 24px; border-radius: 10px; display: inline-block; margin: 16px 0; letter-spacing: 4px; }
+.testimonio { background: #F0EDE3; border-left: 3px solid #C08A3E; padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13px; font-style: italic; color: #4A463C; margin-bottom: 12px; }
+.garantía { background: #EAF5EF; border-radius: 10px; padding: 14px; text-align: center; font-size: 12.5px; color: #0F6B65; margin-top: 16px; }
+button.btn-principal { width: 100%; border: 0; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+#btn-continuar { background: #0F6B65; color: #fff; }
+#btn-continuar:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="insignia">🩺 SISTEMA BIOSOMA · MEDICELL / MEDISER</div>
+  <h1>Digitalice su consulta de Medicina Regenerativa</h1>
+  <p>Evaluación de ejes Wu Xing · Diagnóstico funcional · Informe clínico automático · Base de datos de pacientes en la nube</p>
+</div>
+
+<div class="w">
+  <div class="red">
+
+    <!-- COLUMNA IZQUIERDA: Beneficios -->
+    <div>
+      <div class="tarjeta" style="margin-bottom: 16px;">
+        <h2>✨ ¿Qué incluye su acceso?</h2>
+        <div class="logro"><div class="ic">🌐</div>Evaluación completa de los 5 ejes Wu Xing con circuito Sheng diagnóstico</div>
+        <div class="logro"><div class="ic">📋</div>Historia clínica digital integrada con campos para medicina regenerativa y MTC</div>
+        <div class="logro"><div class="ic">📊</div>Reporte clínico editable con gráfico pentagonal, plan terapéutico y suplementación</div>
+        <div class="logro"><div class="ic">📧</div>Envío automático del reporte al paciente y al médico por correo</div>
+        <div class="logro"><div class="ic">💾</div>Base de datos de pacientes en la nube — accesible desde cualquier dispositivo</div>
+        <div class="logro"><div class="ic">📱</div>Funciona en computadora, tablet y celular sin instalar nada</div>
+        <div class="logro"><div class="ic">🧠</div>Análisis IA de síntomas con diagnóstico energético automático</div>
+        <div class="logro"><div class="ic">🔒</div>Código de acceso personal — solo usted ve sus pacientes</div>
+      </div>
+
+      <div class="tarjeta">
+        <h2>💬 Opiniones de colegas</h2>
+        <div class="testimonio">"Redujo el tiempo de consulta a la mitad. El reporte impresiona a los pacientes." — Dra. M.G., Costa Rica</div>
+        <div class="testimonio">"Por fin un sistema diseñado para medicina regenerativa y MTC, no para medicina convencional." — Dr. J.B., Médico Funcional</div>
+        <div class="garantía">🛡️<strong>Garantía 7 días:</strong> Si no está satisfecho, le devolvemos su dinero sin preguntas.</div>
+      </div>
+    </div>
+
+    <!-- COLUMNA DERECHA: Formulario de pago -->
+    <div class="tarjeta">
+      <div class="cuadro-precio">
+        <div style="font-size: 13px; font-weight: 600; color: #2C5F8A; margin-bottom: 4px;">ACCESO PROFESIONAL MENSUAL</div>
+        <div class="cantidad">$39</div>
+        <div class="periodo">USD / mes · cancele cuando quiera</div>
+        <div class="nota">✓ Sin contratos &nbsp;·&nbsp; ✓ Sin costo de instalación &nbsp;·&nbsp; ✓ Soporte incluido</div>
+      </div>
+
+      <div id="forma-pago">
+        <h2>Sus datos profesionales</h2>
+        <label>Nombre completo *</label>
+        <input id="nombre" placeholder="Dra. Ana López Mora" required>
+
+        <label>Correo electrónico *</label>
+        <input id="correo" type="email" placeholder="dra.ana@clinica.com" required>
+
+        <label>Especialidad</label>
+        <input id="especialidad" placeholder="Medicina Regenerativa / MTC / Funcional">
+
+        <label>Teléfono / WhatsApp</label>
+        <input id="telefono" placeholder="+506 8888-0000">
+
+        <label style="margin-top: 20px;">Pago</label>
+        <button id="btn-continuar" class="btn-principal" type="button">Continuar con el pago →</button>
+
+        <div id="contenedor-pago-onvo"></div>
+
+        <div class="seguro">🔒 Pago seguro procesado por ONVO · Sus datos están protegidos</div>
+        <div id="mensaje"></div>
+      </div>
+
+      <!-- Mensaje de éxito -->
+      <div class="cuadro-exito" id="cuadro-exito">
+        <div style="font-size: 48px; margin-bottom: 12px;">✅</div>
+        <h2>¡Pago confirmado!</h2>
+        <p style="color:#4A463C;font-size:14px;margin-bottom:8px;">Su código de acceso al sistema BIOSOMA es:</p>
+        <div class="visualizacion-codigo" id="codigo-generado"></div>
+        <p style="color:#4A463C;font-size:13px;margin-top:8px;">También lo enviamos a su correo. Guárdelo bien.</p>
+        <div style="margin-top: 20px; padding: 14px; background: #fff; border-radius: 10px; border: 1px solid #E0DDD4;">
+          <p style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Para acceder al sistema:</p>
+          <p style="font-size: 13px; color: #4A463C;">1. Vaya a <strong>biosomamedicell2.vercel.app</strong></p>
+          <p style="font-size: 13px; color: #4A463C;">2. Clic en "Soy médico"</p>
+          <p style="font-size: 13px; color: #4A463C;">3. Ingrese su código</p>
+        </div>
+        <a href="https://biosomamedicell2.vercel.app" target="_blank" style="display:block;margin-top:16px;background:#0F6B65;color:#fff;text-decoration:none;border-radius:10px;padding:12px;font-weight:700;font-size:14px;">Entrar al sistema BIOSOMA →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// — CONFIGURACIÓN —————————————————————————————
+var ONVO_PUBLIC_KEY = 'onvo_test_publishable_key_0rVHTQDgS_AcyjF31H3-ptxq_JhpKWLyAjmCqnltDAqnIl0PksYtWN3RMRZC1YqvakPsYKpPWWp4sBRI21eepQ'; // ver instrucciones abajo
+
+// EmailJS para enviar el código al profesional (correo de bienvenida)
+var EJS_SVC = 'service_wo8yhwp';
+var EJS_TPL = 'template_jjqh80s'; // o el ID de su plantilla nueva
+var EJS_PUB = 'px0HVgCPkd3_CB1Af';
+
+function mostrarMensaje(tipo, texto) {
+  var mensaje = document.getElementById('mensaje');
+  mensaje.className = tipo;
+  mensaje.textContent = texto;
+  mensaje.style.display = 'block';
+}
+
+// — ENVIAR CÓDIGO POR CORREO —————————————————————————————
+async function enviarCodigoPorCorreo(datos) {
+  try {
+    await emailjs.send(EJS_SVC, EJS_TPL, {
+      nombre_a: datos.nombre,
+      enviar_correo_electrónico: datos.correo,
+      nombre_médico: 'MEDICELL / MEDISER',
+      correo_electrónico_médico: 'info@medicellcr.com',
+      clínica: 'Sistema BIOSOMA - MEDICELL / MEDISER',
+      teléfono: '+506 2447-2858',
+      fecha: new Date().toLocaleDateString('es-CR'),
+      destinatario: 'Profesional',
+      resumen: [
+        'Bienvenido/a al Sistema BIOSOMA - MEDICELL / MEDISER',
+        '',
+        'Su suscripción ha sido activada exitosamente.',
+        '',
+        'SU CÓDIGO DE ACCESO PERSONAL:',
+        datos.codigo,
+        '',
+        'INSTRUCCIONES DE ACCESO:',
+        '1. Vaya a: biosomamedicell2.vercel.app',
+        '2. Clic en "Soy médico"',
+        '3. Ingrese su código: ' + datos.codigo,
+        '',
+        'Guarde este código en un lugar seguro.',
+        'Solo usted tiene acceso a sus pacientes.',
+        '',
+        'Para soporte: info@medicellcr.com | +506 2447-2858',
+        '',
+        'MEDICELL / MEDISER - Sistema BIOSOMA'
+      ].join('\n'),
+      eje_prioritario: 'Acceso activado'
+    }, EJS_PUB);
+  } catch (mi) {
+    console.warn('EmailJS:', mi.message);
+  }
+}
+
+// — FLUJO DE PAGO CON ONVO —————————————————————————————
+var subscriptionIdActual = null;
+var customerIdActual = null;
+
+document.getElementById('btn-continuar').addEventListener('click', async function () {
+  var nombre = document.getElementById('nombre').value.trim();
+  var correo = document.getElementById('correo').value.trim();
+  var especialidad = document.getElementById('especialidad').value.trim();
+  var telefono = document.getElementById('telefono').value.trim();
+
+  document.getElementById('mensaje').style.display = 'none';
+
+  if (!nombre || !correo) {
+    mostrarMensaje('error', 'Complete su nombre y correo antes de continuar.');
+    return;
+  }
+
+  var boton = document.getElementById('btn-continuar');
+  boton.disabled = true;
+  boton.textContent = 'Preparando el pago...';
+
+  try {
+    var res = await fetch('/api/onvo-create-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: nombre, correo: correo, especialidad: especialidad, telefono: telefono })
+    });
+    var resultado = await res.json();
+
+    if (!res.ok) {
+      mostrarMensaje('error', resultado.error || 'No se pudo iniciar el pago. Intente de nuevo.');
+      boton.disabled = false;
+      boton.textContent = 'Continuar con el pago →';
+      return;
+    }
+
+    subscriptionIdActual = resultado.subscriptionId;
+    customerIdActual = resultado.customerId;
+
+    boton.style.display = 'none';
+
+    onvo.pay({
+      onError: function (data) {
+        console.error('ONVO error:', data);
+        mostrarMensaje('error', 'Ocurrió un error procesando el pago. Verifique los datos de su tarjeta o intente de nuevo.');
+      },
+      onSuccess: function (data) {
+        mostrarMensaje('información', 'Pago aprobado. Confirmando y activando su acceso...');
+        esperarConfirmacion(nombre, correo);
+      },
+      publicKey: ONVO_PUBLIC_KEY,
+      subscriptionId: subscriptionIdActual,
+      paymentType: 'subscription',
+      customerId: customerIdActual,
+      locale: 'es'
+    }).render('#contenedor-pago-onvo');
+
+  } catch (error) {
+    mostrarMensaje('error', 'No se pudo conectar con el servidor de pagos. Intente de nuevo.');
+    boton.disabled = false;
+    boton.textContent = 'Continuar con el pago →';
+  }
+});
+
+// El servidor (webhook) confirma el cobro real con ONVO antes de generar el código;
+// aquí solo esperamos (polling) a que ese proceso termine.
+async function esperarConfirmacion(nombre, correo) {
+  var intentos = 0;
+  var maximoIntentos = 20; // ~40 segundos
+
+  var intervalo = setInterval(async function () {
+    intentos++;
+    try {
+      var res = await fetch('/api/onvo-check-status?subscriptionId=' + encodeURIComponent(subscriptionIdActual));
+      var estado = await res.json();
+
+      if (estado.listo) {
+        clearInterval(intervalo);
+        var datos = { nombre: nombre, correo: correo, codigo: estado.codigo };
+        await enviarCodigoPorCorreo(datos);
+
+        document.getElementById('forma-pago').style.display = 'none';
+        document.getElementById('cuadro-exito').style.display = 'block';
+        document.getElementById('codigo-generado').textContent = estado.codigo;
+        return;
+      }
+
+      if (intentos >= maximoIntentos) {
+        clearInterval(intervalo);
+        mostrarMensaje('error', 'Su pago fue procesado, pero la activación está tardando más de lo normal. Contacte soporte con este ID: ' + subscriptionIdActual);
+      }
+    } catch (e) {
+      // reintenta en el siguiente ciclo
+    }
+  }, 2000);
+}
+</script>
+
+</body>
+</html>
