@@ -4,6 +4,8 @@
 // Nunca confiar en el navegador para esto -- el navegador solo espera (polling) a que
 // este webhook termine de procesar.
 
+const ONVO_API_BASE_URL = 'https://api.onvopay.com/v1';
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
@@ -26,30 +28,57 @@ module.exports = async (req, res) => {
 
     const evento = req.body || {};
     const tipo = evento.type;
+    const datos = evento.data || {};
 
-    // DIAGNÓSTICO TEMPORAL: registrar el evento completo tal como llega de ONVO
-    console.log('DIAGNOSTICO - Evento recibido de ONVO:', JSON.stringify(evento));
+    // ONVO envía dos eventos distintos según el momento del cobro:
+    // - "payment-intent.succeeded": el PRIMER cobro de la suscripción (el que
+    //   confirma el widget onvo.pay() al momento de la compra).
+    // - "subscription.renewal.succeeded": cobros de RENOVACIÓN, meses después.
+    // Necesitamos activar el acceso en ambos casos, pero cada uno trae la
+    // información en un lugar distinto.
+    let subscriptionId;
 
-    // Solo nos interesa cuando un cobro (inicial o renovación) se confirma con éxito
-    if (tipo !== 'subscription.renewal.succeeded') {
-      console.log('DIAGNOSTICO - Evento ignorado, tipo recibido:', tipo);
-      // Respondemos 200 igual para que ONVO no reintente eventos que no usamos
+    if (tipo === 'payment-intent.succeeded') {
+      // El intento de pago no trae el subscriptionId directamente; hay que
+      // ubicar la suscripción a través del cliente asociado al pago.
+      const customerId = datos.customerId || (datos.customer && datos.customer.id);
+
+      if (!customerId) {
+        console.error('payment-intent.succeeded sin customerId:', evento);
+        return res.status(200).json({ recibido: true, error: 'Sin customerId en el evento' });
+      }
+
+      const subsListResp = await fetch(`${ONVO_API_BASE_URL}/customers/${encodeURIComponent(customerId)}/subscriptions`, {
+        headers: { 'Authorization': `Bearer ${ONVO_SECRET_KEY}` }
+      });
+      const subsList = await subsListResp.json();
+
+      if (!subsListResp.ok || !Array.isArray(subsList) || subsList.length === 0) {
+        console.error('No se encontraron suscripciones para el cliente:', customerId, subsList);
+        return res.status(200).json({ recibido: true, error: 'Sin suscripción asociada al cliente' });
+      }
+
+      // Tomamos la más reciente (por si el cliente tuviera varias)
+      subscriptionId = subsList[0].id;
+
+    } else if (tipo === 'subscription.renewal.succeeded') {
+      // IMPORTANTE: en este evento, "data" es la FACTURA/renovación, no la suscripción.
+      // El id real de la suscripción viene en data.subscriptionId (data.id es el id de la factura).
+      subscriptionId = datos.subscriptionId;
+
+    } else {
+      // Cualquier otro evento no nos interesa. Respondemos 200 para que ONVO no reintente.
       return res.status(200).json({ recibido: true, ignorado: tipo });
     }
 
-    const datos = evento.data || {};
-    // IMPORTANTE: en este evento, "data" es la FACTURA/renovación, no la suscripción.
-    // El id real de la suscripción viene en data.subscriptionId (data.id es el id de la factura).
-    // La metadata (nombre, correo, especialidad) se guardó en la SUSCRIPCIÓN al crearla,
-    // no en la factura -- por eso hay que consultar la suscripción directamente en ONVO.
-    const subscriptionId = datos.subscriptionId;
-
     if (!subscriptionId) {
-      console.error('Webhook sin subscriptionId:', evento);
-      return res.status(200).json({ recibido: true, error: 'Sin subscriptionId en el evento' });
+      console.error('No se pudo determinar subscriptionId para el evento:', evento);
+      return res.status(200).json({ recibido: true, error: 'Sin subscriptionId' });
     }
 
-    const subResp = await fetch(`https://api.onvopay.com/v1/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    // La metadata (nombre, correo, especialidad) se guardó en la SUSCRIPCIÓN al
+    // crearla, así que la consultamos directamente en ONVO con su id.
+    const subResp = await fetch(`${ONVO_API_BASE_URL}/subscriptions/${encodeURIComponent(subscriptionId)}`, {
       headers: {
         'Authorization': `Bearer ${ONVO_SECRET_KEY}`
       }
