@@ -51,10 +51,12 @@ module.exports = async (req, res) => {
       const subsListResp = await fetch(`${ONVO_API_BASE_URL}/customers/${encodeURIComponent(customerId)}/subscriptions`, {
         headers: { 'Authorization': `Bearer ${ONVO_SECRET_KEY}` }
       });
-      const subsList = await subsListResp.json();
+      const subsListBody = await subsListResp.json();
+      // La respuesta viene paginada: { data: [...], meta: {...} }, no un array suelto.
+      const subsList = Array.isArray(subsListBody) ? subsListBody : (subsListBody.data || []);
 
-      if (!subsListResp.ok || !Array.isArray(subsList) || subsList.length === 0) {
-        console.error('No se encontraron suscripciones para el cliente:', customerId, subsList);
+      if (!subsListResp.ok || subsList.length === 0) {
+        console.error('No se encontraron suscripciones para el cliente:', customerId, subsListBody);
         return res.status(200).json({ recibido: true, error: 'Sin suscripción asociada al cliente' });
       }
 
