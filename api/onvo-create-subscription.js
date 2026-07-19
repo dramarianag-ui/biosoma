@@ -25,6 +25,22 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'Configuración del servidor incompleta' });
     }
 
+    // Normalizar el teléfono a formato internacional (E.164), que es lo que
+    // exige la API de ONVO. Si el usuario no incluyó código de país, asumimos
+    // Costa Rica (+506). Si el campo viene vacío o irreconocible, se omite
+    // por completo para no bloquear la creación del cliente por este dato opcional.
+    let telefonoNormalizado;
+    if (telefono) {
+      const soloDigitosYMas = telefono.replace(/[^\d+]/g, '');
+      if (soloDigitosYMas.startsWith('+')) {
+        telefonoNormalizado = soloDigitosYMas;
+      } else if (soloDigitosYMas.length === 8) {
+        telefonoNormalizado = `+506${soloDigitosYMas}`;
+      } else if (soloDigitosYMas.length > 8) {
+        telefonoNormalizado = `+${soloDigitosYMas}`;
+      }
+    }
+
     // 1) Crear el cliente primero. La API de suscripciones de ONVO NO acepta
     //    un objeto "customer" inline -- exige un customerId ya existente.
     const customerResponse = await fetch(`${ONVO_API_BASE}/customers`, {
@@ -36,7 +52,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         name: nombre,
         email: correo,
-        phone: telefono || undefined
+        phone: telefonoNormalizado
       })
     });
 
