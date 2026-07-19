@@ -20,9 +20,15 @@ module.exports = async (req, res) => {
 
     const { ONVO_SECRET_KEY, ONVO_PRICE_ID } = process.env;
 
+    // DIAGNÓSTICO TEMPORAL: lista qué variables de entorno ve la función (solo nombres, no valores)
+    const envKeys = Object.keys(process.env).filter(k => k.includes('ONVO'));
+    console.log('DIAGNOSTICO - Variables ONVO detectadas:', envKeys);
+    console.log('DIAGNOSTICO - ONVO_SECRET_KEY presente:', !!ONVO_SECRET_KEY, 'longitud:', ONVO_SECRET_KEY ? ONVO_SECRET_KEY.length : 0);
+    console.log('DIAGNOSTICO - ONVO_PRICE_ID presente:', !!ONVO_PRICE_ID, 'longitud:', ONVO_PRICE_ID ? ONVO_PRICE_ID.length : 0);
+
     if (!ONVO_SECRET_KEY || !ONVO_PRICE_ID) {
-      console.error('Faltan variables de entorno ONVO en Vercel');
-      return res.status(500).json({ error: 'Configuración del servidor incompleta' });
+      console.error('Faltan variables de entorno ONVO en Vercel. Detectadas:', envKeys);
+      return res.status(500).json({ error: 'Configuración del servidor incompleta', debug: envKeys });
     }
 
     // 1) Crear el cargo recurrente. ONVO crea el cliente en la misma solicitud
