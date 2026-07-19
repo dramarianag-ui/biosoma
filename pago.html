@@ -134,7 +134,7 @@ var ONVO_PUBLIC_KEY = 'onvo_test_publishable_key_0rVHTQDgS_AcyjF31H3-ptxq_JhpKWL
 
 // EmailJS para enviar el código al profesional (correo de bienvenida)
 var EJS_SVC = 'service_wo8yhwp';
-var EJS_TPL = 'template_jjqh80s'; // o el ID de su plantilla nueva
+var EJS_TPL = 'template_mtirybg'; // plantilla real "Contact Us" en la cuenta de EmailJS
 var EJS_PUB = 'px0HVgCPkd3_CB1Af';
 
 function mostrarMensaje(tipo, texto) {
@@ -148,14 +148,13 @@ function mostrarMensaje(tipo, texto) {
 async function enviarCodigoPorCorreo(datos) {
   try {
     await emailjs.send(EJS_SVC, EJS_TPL, {
-      nombre_a: datos.nombre,
-      enviar_correo_electrónico: datos.correo,
-      nombre_médico: 'MEDICELL / MEDISER',
-      correo_electrónico_médico: 'info@medicellcr.com',
-      clínica: 'Sistema BIOSOMA - MEDICELL / MEDISER',
-      teléfono: '+506 2447-2858',
+      to_name: datos.nombre,
+      to_email: datos.correo,
+      medico_name: 'MEDICELL / MEDISER',
+      medico_email: 'info@medicellcr.com',
+      clinica: 'Sistema BIOSOMA - MEDICELL / MEDISER',
       fecha: new Date().toLocaleDateString('es-CR'),
-      destinatario: 'Profesional',
+      eje_prioritario: 'Acceso activado',
       resumen: [
         'Bienvenido/a al Sistema BIOSOMA - MEDICELL / MEDISER',
         '',
@@ -175,8 +174,7 @@ async function enviarCodigoPorCorreo(datos) {
         'Para soporte: info@medicellcr.com | +506 2447-2858',
         '',
         'MEDICELL / MEDISER - Sistema BIOSOMA'
-      ].join('\n'),
-      eje_prioritario: 'Acceso activado'
+      ].join('\n')
     }, EJS_PUB);
   } catch (mi) {
     console.warn('EmailJS:', mi.message);
