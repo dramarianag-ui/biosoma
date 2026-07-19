@@ -20,19 +20,38 @@ module.exports = async (req, res) => {
 
     const { ONVO_SECRET_KEY, ONVO_PRICE_ID } = process.env;
 
-    // DIAGNÓSTICO TEMPORAL: lista qué variables de entorno ve la función (solo nombres, no valores)
-    const envKeys = Object.keys(process.env).filter(k => k.includes('ONVO'));
-    console.log('DIAGNOSTICO - Variables ONVO detectadas:', envKeys);
-    console.log('DIAGNOSTICO - ONVO_SECRET_KEY presente:', !!ONVO_SECRET_KEY, 'longitud:', ONVO_SECRET_KEY ? ONVO_SECRET_KEY.length : 0);
-    console.log('DIAGNOSTICO - ONVO_PRICE_ID presente:', !!ONVO_PRICE_ID, 'longitud:', ONVO_PRICE_ID ? ONVO_PRICE_ID.length : 0);
-
     if (!ONVO_SECRET_KEY || !ONVO_PRICE_ID) {
-      console.error('Faltan variables de entorno ONVO en Vercel. Detectadas:', envKeys);
-      return res.status(500).json({ error: 'Configuración del servidor incompleta', debug: envKeys });
+      console.error('Faltan variables de entorno ONVO en Vercel');
+      return res.status(500).json({ error: 'Configuración del servidor incompleta' });
     }
 
-    // 1) Crear el cargo recurrente. ONVO crea el cliente en la misma solicitud
-    //    si le mandamos "customer" en vez de "customerId".
+    // 1) Crear el cliente primero. La API de suscripciones de ONVO NO acepta
+    //    un objeto "customer" inline -- exige un customerId ya existente.
+    const customerResponse = await fetch(`${ONVO_API_BASE}/customers`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ONVO_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: nombre,
+        email: correo,
+        phone: telefono || undefined
+      })
+    });
+
+    const customerData = await customerResponse.json();
+
+    if (!customerResponse.ok) {
+      console.error('Error creando cliente en ONVO:', customerData);
+      return res.status(502).json({ error: 'No se pudo crear el cliente', detalle: customerData });
+    }
+
+    const customerId = customerData.id;
+
+    // 2) Crear la suscripción en modo "allow_incomplete": queda pendiente de
+    //    confirmación hasta que el widget onvo.pay() del navegador capture la
+    //    tarjeta y la confirme (paso que hace el propio SDK del cliente).
     const subResponse = await fetch(`${ONVO_API_BASE}/subscriptions`, {
       method: 'POST',
       headers: {
@@ -40,11 +59,7 @@ module.exports = async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        customer: {
-          name: nombre,
-          email: correo,
-          phone: telefono || undefined
-        },
+        customerId: customerId,
         paymentBehavior: 'allow_incomplete',
         description: 'Acceso Profesional BIOSOMA - Plan Mensual',
         items: [
@@ -69,10 +84,10 @@ module.exports = async (req, res) => {
       return res.status(502).json({ error: 'No se pudo crear la suscripción', detalle: subData });
     }
 
-    // ONVO devuelve el id de la suscripción y el customerId asociado.
+    // ONVO devuelve el id de la suscripción.
     return res.status(201).json({
       subscriptionId: subData.id,
-      customerId: subData.customerId || (subData.customer && subData.customer.id) || null
+      customerId: customerId
     });
 
   } catch (err) {
