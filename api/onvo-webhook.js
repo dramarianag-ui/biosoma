@@ -27,8 +27,12 @@ module.exports = async (req, res) => {
     const evento = req.body || {};
     const tipo = evento.type;
 
+    // DIAGNÓSTICO TEMPORAL: registrar el evento completo tal como llega de ONVO
+    console.log('DIAGNOSTICO - Evento recibido de ONVO:', JSON.stringify(evento));
+
     // Solo nos interesa cuando un cobro (inicial o renovación) se confirma con éxito
     if (tipo !== 'subscription.renewal.succeeded') {
+      console.log('DIAGNOSTICO - Evento ignorado, tipo recibido:', tipo);
       // Respondemos 200 igual para que ONVO no reintente eventos que no usamos
       return res.status(200).json({ recibido: true, ignorado: tipo });
     }
