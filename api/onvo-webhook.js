@@ -12,9 +12,9 @@ module.exports = async (req, res) => {
   try {
     // 1) Verificar que la solicitud viene realmente de ONVO
     const secretRecibido = req.headers['x-webhook-secret'];
-    const { ONVO_WEBHOOK_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+    const { ONVO_WEBHOOK_SECRET, ONVO_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 
-    if (!ONVO_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!ONVO_WEBHOOK_SECRET || !ONVO_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       console.error('Faltan variables de entorno en Vercel (ONVO/Supabase)');
       return res.status(500).json({ error: 'Configuración del servidor incompleta' });
     }
@@ -34,18 +34,37 @@ module.exports = async (req, res) => {
     }
 
     const datos = evento.data || {};
-    // La renovación viene asociada a la suscripción; buscamos sus metadatos
-    const subscription = datos.subscription || datos;
-    const metadata = subscription.metadata || {};
-    const subscriptionId = subscription.id || datos.subscriptionId;
+    // IMPORTANTE: en este evento, "data" es la FACTURA/renovación, no la suscripción.
+    // El id real de la suscripción viene en data.subscriptionId (data.id es el id de la factura).
+    // La metadata (nombre, correo, especialidad) se guardó en la SUSCRIPCIÓN al crearla,
+    // no en la factura -- por eso hay que consultar la suscripción directamente en ONVO.
+    const subscriptionId = datos.subscriptionId;
 
+    if (!subscriptionId) {
+      console.error('Webhook sin subscriptionId:', evento);
+      return res.status(200).json({ recibido: true, error: 'Sin subscriptionId en el evento' });
+    }
+
+    const subResp = await fetch(`https://api.onvopay.com/v1/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+      headers: {
+        'Authorization': `Bearer ${ONVO_SECRET_KEY}`
+      }
+    });
+    const subData = await subResp.json();
+
+    if (!subResp.ok) {
+      console.error('No se pudo obtener la suscripción desde ONVO:', subData);
+      return res.status(200).json({ recibido: true, error: 'No se pudo obtener la suscripción' });
+    }
+
+    const metadata = subData.metadata || {};
     const nombre = metadata.nombre || '';
     const correo = metadata.correo || '';
     const especialidad = metadata.especialidad || '';
 
-    if (!correo || !subscriptionId) {
-      console.error('Webhook sin correo o subscriptionId en metadata:', evento);
-      return res.status(200).json({ recibido: true, error: 'Datos insuficientes en metadata' });
+    if (!correo) {
+      console.error('Suscripción sin correo en metadata:', subData);
+      return res.status(200).json({ recibido: true, error: 'Datos insuficientes en metadata de la suscripción' });
     }
 
     // 2) Idempotencia: si ya existe un profesional con este subscriptionId, no duplicar
