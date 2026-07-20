@@ -633,12 +633,26 @@ async function enviarCorreoConPDF(p,rep,planLineas){
   try{
     var _ejeElM=document.getElementById("eje-prioritario-area");
     var _emoElM=document.getElementById("emociones-content-wrap");
-    var _terNeuralEl=document.getElementById("terapia-neural-wrap");
     var _obsElM=document.getElementById("observaciones-content-wrap");
+
+    // Terapia Neural / Acupuntura — agrupada en columnas para que no sea tan extensa
+    var _acuList=(rep&&rep.acuList)?rep.acuList.map(function(a,i){
+      var nm=a.indexOf("\u2014")>=0?a.split("\u2014")[0].trim():a;
+      return (i+1)+". "+nm;
+    }):[];
+    var _acuLineas=[];
+    for(var _i=0;_i<_acuList.length;_i+=3){
+      _acuLineas.push(_acuList.slice(_i,_i+3).join("     "));
+    }
+    var _notasTNEl=document.getElementById("terapia-neural-notas-area");
+    var _notasTNtxt=_notasTNEl?_notasTNEl.innerText.trim():"";
+    var terapiaNeuralTxt=["TERAPIA NEURAL \u00b7 ACUPUNTURA / BIOPUNTURA",_acuLineas.join("\n")]
+      .concat(_notasTNtxt?["",_notasTNtxt]:[]).join("\n");
+
     var _partesM=[historialClinico];
     if(_ejeElM){_partesM.push("");_partesM.push("EJE FUNCIONAL PRIORITARIO");_partesM.push(_ejeElM.innerText.trim());}
     if(_emoElM){_partesM.push("");_partesM.push(_emoElM.innerText.trim());}
-    if(_terNeuralEl){_partesM.push("");_partesM.push(_terNeuralEl.innerText.trim());}
+    if(_acuLineas.length){_partesM.push("");_partesM.push(terapiaNeuralTxt);}
     if(_obsElM){_partesM.push("");_partesM.push(_obsElM.innerText.trim());}
     repText=_partesM.join("\n").replace(/\n{3,}/g,"\n\n").trim();
   }catch(e){}
