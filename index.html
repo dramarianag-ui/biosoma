@@ -582,24 +582,6 @@ async function enviarCorreoConPDF(p,rep,planLineas){
   var h=p.historia||{};
   var fecha=new Date().toLocaleDateString("es-CR");
 
-  // Versión para el MÉDICO: exactamente 5 secciones del reporte en pantalla
-  // (resumen clínico, eje funcional con %, emociones, plan terapéutico integral completo, observaciones/plan de seguimiento)
-  var repText="";
-  try{
-    var _resEl=document.getElementById("rep-resumen");
-    var _ejeElM=document.getElementById("eje-prioritario-area");
-    var _emoElM=document.getElementById("emociones-content-wrap");
-    var _planElM=document.getElementById("plan-terapeutico-wrap");
-    var _obsElM=document.getElementById("observaciones-content-wrap");
-    var _partesM=[];
-    if(_resEl){_partesM.push("RESUMEN CL\u00cdNICO");_partesM.push(_resEl.innerText.trim());}
-    if(_ejeElM){_partesM.push("");_partesM.push("EJE FUNCIONAL PRIORITARIO");_partesM.push(_ejeElM.innerText.trim());}
-    if(_emoElM){_partesM.push("");_partesM.push(_emoElM.innerText.trim());}
-    if(_planElM){_partesM.push("");_partesM.push(_planElM.innerText.trim());}
-    if(_obsElM){_partesM.push("");_partesM.push(_obsElM.innerText.trim());}
-    repText=_partesM.join("\n").replace(/\n{3,}/g,"\n\n").trim();
-  }catch(e){}
-
   // Versión para el paciente: se toma EXACTAMENTE de 3 secciones del reporte en pantalla
   // (eje funcional prioritario con %, emociones comprometidas, observaciones/plan de seguimiento)
   var patientText="";
@@ -621,6 +603,39 @@ async function enviarCorreoConPDF(p,rep,planLineas){
       _partes.push(_obsEl.innerText.trim());
     }
     patientText=_partes.join("\n").replace(/\n{3,}/g,"\n\n").trim();
+  }catch(e){}
+
+  // Historial clínico del paciente (datos, motivo de consulta, antecedentes)
+  var historialClinico=[
+    "HISTORIAL CL\u00cdNICO",
+    "Nombre:       "+(h.nombre||""),
+    "C\u00e9dula:       "+(h.cedula||""),
+    "Edad:         "+(h.edad||"")+" a\u00f1os | G\u00e9nero: "+(h.genero||""),
+    "Tipo sangre:  "+(h.tipoSangre||""),
+    "Profesi\u00f3n:    "+(h.profesion||""),
+    "Correo:       "+(h.correo||""),
+    "Celular:      "+(h.celular||""),
+    "",
+    "Motivo de consulta: "+(h.motivoConsulta||""),
+    "Diagn\u00f3stico previo: "+(h.diagnosticoPrincipal||""),
+    "Situaci\u00f3n prioritaria: "+(h.preguntaTransformacional||""),
+    "",
+    "Antecedentes familiares:   "+(h.antFamiliares||""),
+    "Antecedentes personales:   "+(h.antPersonales||""),
+    "Antecedentes quir\u00fargicos: "+(h.antQuirurgicos||""),
+    "Medicamentos: "+(h.medicamentos||""),
+    "Suplementos:  "+(h.suplementos||""),
+    "Alergias:     "+(h.alergiaAlimentos||"No conocidas")
+  ].join("\n");
+
+  // Versión para el MÉDICO: historial clínico + lo mismo del paciente + plan terapéutico integral completo (con anotaciones)
+  var repText="";
+  try{
+    var _planElM=document.getElementById("plan-terapeutico-wrap");
+    var _partesM=[historialClinico];
+    if(patientText){_partesM.push("");_partesM.push(patientText);}
+    if(_planElM){_partesM.push("");_partesM.push(_planElM.innerText.trim());}
+    repText=_partesM.join("\n").replace(/\n{3,}/g,"\n\n").trim();
   }catch(e){}
 
   // Usar el profesional REALMENTE asignado al paciente (no el médico general de Configuración)
