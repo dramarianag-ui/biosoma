@@ -582,11 +582,22 @@ async function enviarCorreoConPDF(p,rep,planLineas){
   var h=p.historia||{};
   var fecha=new Date().toLocaleDateString("es-CR");
 
-  // Contenido REAL del reporte tal como quedó editado en pantalla (misma fuente que el PDF)
+  // Versión para el MÉDICO: exactamente 5 secciones del reporte en pantalla
+  // (resumen clínico, eje funcional con %, emociones, plan terapéutico integral completo, observaciones/plan de seguimiento)
   var repText="";
   try{
-    var repEl=document.getElementById("rep-content");
-    if(repEl)repText=repEl.innerText.replace(/\n{3,}/g,"\n\n").trim();
+    var _resEl=document.getElementById("rep-resumen");
+    var _ejeElM=document.getElementById("eje-prioritario-area");
+    var _emoElM=document.getElementById("emociones-content-wrap");
+    var _planElM=document.getElementById("plan-terapeutico-wrap");
+    var _obsElM=document.getElementById("observaciones-content-wrap");
+    var _partesM=[];
+    if(_resEl){_partesM.push("RESUMEN CL\u00cdNICO");_partesM.push(_resEl.innerText.trim());}
+    if(_ejeElM){_partesM.push("");_partesM.push("EJE FUNCIONAL PRIORITARIO");_partesM.push(_ejeElM.innerText.trim());}
+    if(_emoElM){_partesM.push("");_partesM.push(_emoElM.innerText.trim());}
+    if(_planElM){_partesM.push("");_partesM.push(_planElM.innerText.trim());}
+    if(_obsElM){_partesM.push("");_partesM.push(_obsElM.innerText.trim());}
+    repText=_partesM.join("\n").replace(/\n{3,}/g,"\n\n").trim();
   }catch(e){}
 
   // Versión para el paciente: se toma EXACTAMENTE de 3 secciones del reporte en pantalla
@@ -1604,14 +1615,14 @@ function vReporte(){
     +penHtml
     +(n?'<span class="rep-sec">3. Evaluaci\xf3n neurofocal dental</span><div class="rep-txt" id="dental-eval-area" contenteditable="true" style="outline:none;border:1px dashed transparent;border-radius:5px;padding:4px" onfocus="this.style.borderColor=\'#C08A3E\'" onblur="this.style.borderColor=\'transparent\'">'+rep.dental+'</div>':"")
     +'<div id="emociones-content-wrap"><span class="rep-sec">'+(n?4:3)+'. Emociones comprometidas</span>'+emoHtml+'</div>'
-    +'<span class="rep-sec">'+(n?5:4)+'. Plan terap\xe9utico integral</span>'
+    +'<div id="plan-terapeutico-wrap"><span class="rep-sec">'+(n?5:4)+'. Plan terap\xe9utico integral</span>'
     +'<span class="subsec">Terapia Neural \xb7 Acupuntura / Biopuntura</span>'
     +acuHtml
     +'<div class="edit-area" id="terapia-neural-notas-area" contenteditable="true" style="margin-top:6px;min-height:35px" data-ph="Indicaciones adicionales de terapia neural / biopuntura\u2026"></div>'
     +'<span class="subsec" style="color:#C08A3E;margin-top:10px">Sueroterapia regenerativa \u2014 eje prioritario</span>'
     +sueroHtml
     +'<span class="subsec" style="color:#C08A3E;margin-top:10px">Suplementaci\xf3n sugerida</span>'
-    +supHtml
+    +supHtml+'</div>'
     +'<span class="rep-sec">'+(n?6:5)+'. Terapias sugeridas</span>'
     +terapiasHtml
     +'<span class="rep-sec">'+(n?7:6)+'. Laboratorios \xb7 Ex\xe1menes \xb7 Imaginolog\xeda</span>'
