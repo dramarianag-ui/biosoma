@@ -628,13 +628,18 @@ async function enviarCorreoConPDF(p,rep,planLineas){
     "Alergias:     "+(h.alergiaAlimentos||"No conocidas")
   ].join("\n");
 
-  // Versión para el MÉDICO: historial clínico + lo mismo del paciente + plan terapéutico integral completo (con anotaciones)
+  // Versión para el MÉDICO: historial clínico + eje funcional + emociones + terapia neural/acupuntura completa + plan de seguimiento
   var repText="";
   try{
-    var _planElM=document.getElementById("plan-terapeutico-wrap");
+    var _ejeElM=document.getElementById("eje-prioritario-area");
+    var _emoElM=document.getElementById("emociones-content-wrap");
+    var _terNeuralEl=document.getElementById("terapia-neural-wrap");
+    var _obsElM=document.getElementById("observaciones-content-wrap");
     var _partesM=[historialClinico];
-    if(patientText){_partesM.push("");_partesM.push(patientText);}
-    if(_planElM){_partesM.push("");_partesM.push(_planElM.innerText.trim());}
+    if(_ejeElM){_partesM.push("");_partesM.push("EJE FUNCIONAL PRIORITARIO");_partesM.push(_ejeElM.innerText.trim());}
+    if(_emoElM){_partesM.push("");_partesM.push(_emoElM.innerText.trim());}
+    if(_terNeuralEl){_partesM.push("");_partesM.push(_terNeuralEl.innerText.trim());}
+    if(_obsElM){_partesM.push("");_partesM.push(_obsElM.innerText.trim());}
     repText=_partesM.join("\n").replace(/\n{3,}/g,"\n\n").trim();
   }catch(e){}
 
@@ -1630,14 +1635,14 @@ function vReporte(){
     +penHtml
     +(n?'<span class="rep-sec">3. Evaluaci\xf3n neurofocal dental</span><div class="rep-txt" id="dental-eval-area" contenteditable="true" style="outline:none;border:1px dashed transparent;border-radius:5px;padding:4px" onfocus="this.style.borderColor=\'#C08A3E\'" onblur="this.style.borderColor=\'transparent\'">'+rep.dental+'</div>':"")
     +'<div id="emociones-content-wrap"><span class="rep-sec">'+(n?4:3)+'. Emociones comprometidas</span>'+emoHtml+'</div>'
-    +'<div id="plan-terapeutico-wrap"><span class="rep-sec">'+(n?5:4)+'. Plan terap\xe9utico integral</span>'
-    +'<span class="subsec">Terapia Neural \xb7 Acupuntura / Biopuntura</span>'
+    +'<span class="rep-sec">'+(n?5:4)+'. Plan terap\xe9utico integral</span>'
+    +'<div id="terapia-neural-wrap"><span class="subsec">Terapia Neural \xb7 Acupuntura / Biopuntura</span>'
     +acuHtml
-    +'<div class="edit-area" id="terapia-neural-notas-area" contenteditable="true" style="margin-top:6px;min-height:35px" data-ph="Indicaciones adicionales de terapia neural / biopuntura\u2026"></div>'
+    +'<div class="edit-area" id="terapia-neural-notas-area" contenteditable="true" style="margin-top:6px;min-height:35px" data-ph="Indicaciones adicionales de terapia neural / biopuntura\u2026"></div></div>'
     +'<span class="subsec" style="color:#C08A3E;margin-top:10px">Sueroterapia regenerativa \u2014 eje prioritario</span>'
     +sueroHtml
     +'<span class="subsec" style="color:#C08A3E;margin-top:10px">Suplementaci\xf3n sugerida</span>'
-    +supHtml+'</div>'
+    +supHtml
     +'<span class="rep-sec">'+(n?6:5)+'. Terapias sugeridas</span>'
     +terapiasHtml
     +'<span class="rep-sec">'+(n?7:6)+'. Laboratorios \xb7 Ex\xe1menes \xb7 Imaginolog\xeda</span>'
