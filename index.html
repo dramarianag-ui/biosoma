@@ -582,13 +582,34 @@ async function enviarCorreoConPDF(p,rep,planLineas){
   var h=p.historia||{};
   var fecha=new Date().toLocaleDateString("es-CR");
 
+  // Texto real de un campo editable, excluyendo el placeholder si no se escribió nada
+  function textoReal(el){
+    if(!el)return "";
+    var t=(el.innerText||"").trim();
+    var ph=(el.getAttribute("data-ph")||"").trim();
+    if(!t||t===ph)return "";
+    return t;
+  }
+  // "Observaciones — Plan de seguimiento" armado a mano: lista autom\u00e1tica + nota manual (solo si tiene contenido real)
+  function textoObservaciones(){
+    var lista=document.getElementById("plan-auto-list");
+    var manual=document.getElementById("plan-manual");
+    var partes=["OBSERVACIONES \u2014 PLAN DE SEGUIMIENTO"];
+    if(lista){
+      var t=lista.innerText.trim();
+      if(t&&t.indexOf("A\u00fan no hay elementos marcados")===-1)partes.push(t);
+    }
+    var manualTxt=textoReal(manual);
+    if(manualTxt)partes.push(manualTxt);
+    return partes.join("\n");
+  }
+
   // Versión para el paciente: se toma EXACTAMENTE de 3 secciones del reporte en pantalla
   // (eje funcional prioritario con %, emociones comprometidas, observaciones/plan de seguimiento)
   var patientText="";
   try{
     var _ejeEl=document.getElementById("eje-prioritario-area");
     var _emoEl=document.getElementById("emociones-content-wrap");
-    var _obsEl=document.getElementById("observaciones-content-wrap");
     var _partes=[];
     if(_ejeEl){
       _partes.push("EJE FUNCIONAL PRIORITARIO");
@@ -598,10 +619,8 @@ async function enviarCorreoConPDF(p,rep,planLineas){
       _partes.push("");
       _partes.push(_emoEl.innerText.trim());
     }
-    if(_obsEl){
-      _partes.push("");
-      _partes.push(_obsEl.innerText.trim());
-    }
+    _partes.push("");
+    _partes.push(textoObservaciones());
     patientText=_partes.join("\n").replace(/\n{3,}/g,"\n\n").trim();
   }catch(e){}
 
@@ -633,7 +652,6 @@ async function enviarCorreoConPDF(p,rep,planLineas){
   try{
     var _ejeElM=document.getElementById("eje-prioritario-area");
     var _emoElM=document.getElementById("emociones-content-wrap");
-    var _obsElM=document.getElementById("observaciones-content-wrap");
 
     // Terapia Neural / Acupuntura — agrupada en columnas para que no sea tan extensa
     var _acuList=(rep&&rep.acuList)?rep.acuList.map(function(a,i){
@@ -644,8 +662,7 @@ async function enviarCorreoConPDF(p,rep,planLineas){
     for(var _i=0;_i<_acuList.length;_i+=3){
       _acuLineas.push(_acuList.slice(_i,_i+3).join("     "));
     }
-    var _notasTNEl=document.getElementById("terapia-neural-notas-area");
-    var _notasTNtxt=_notasTNEl?_notasTNEl.innerText.trim():"";
+    var _notasTNtxt=textoReal(document.getElementById("terapia-neural-notas-area"));
     var terapiaNeuralTxt=["TERAPIA NEURAL \u00b7 ACUPUNTURA / BIOPUNTURA",_acuLineas.join("\n")]
       .concat(_notasTNtxt?["",_notasTNtxt]:[]).join("\n");
 
@@ -653,7 +670,7 @@ async function enviarCorreoConPDF(p,rep,planLineas){
     if(_ejeElM){_partesM.push("");_partesM.push("EJE FUNCIONAL PRIORITARIO");_partesM.push(_ejeElM.innerText.trim());}
     if(_emoElM){_partesM.push("");_partesM.push(_emoElM.innerText.trim());}
     if(_acuLineas.length){_partesM.push("");_partesM.push(terapiaNeuralTxt);}
-    if(_obsElM){_partesM.push("");_partesM.push(_obsElM.innerText.trim());}
+    _partesM.push("");_partesM.push(textoObservaciones());
     repText=_partesM.join("\n").replace(/\n{3,}/g,"\n\n").trim();
   }catch(e){}
 
