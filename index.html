@@ -582,6 +582,20 @@ async function enviarCorreoConPDF(p,rep,planLineas){
   var h=p.historia||{};
   var fecha=new Date().toLocaleDateString("es-CR");
 
+  // Contenido REAL del reporte tal como quedó editado en pantalla (misma fuente que el PDF)
+  var repText="";
+  try{
+    var repEl=document.getElementById("rep-content");
+    if(repEl)repText=repEl.innerText.replace(/\n{3,}/g,"\n\n").trim();
+  }catch(e){}
+
+  // Versión educativa/simple para el paciente, editada por el médico en pantalla
+  var patientText="";
+  try{
+    var patEl=document.getElementById("patient-rep-content");
+    if(patEl)patientText=patEl.innerText.replace(/\n{3,}/g,"\n\n").trim();
+  }catch(e){}
+
   // Usar el profesional REALMENTE asignado al paciente (no el médico general de Configuración)
   var medicoNombre=cfg.medico,medicoCorreo=cfg.email_medico,medicoTel=cfg.telefono;
   if(p.profesional_codigo){
@@ -602,8 +616,8 @@ async function enviarCorreoConPDF(p,rep,planLineas){
     return (i+1)+". "+n;
   }).join("\n"):"";
 
-  // ── CORREO PARA EL MÉDICO: reporte clínico completo ──
-  var resumenMedico=[
+  // ── CORREO PARA EL MÉDICO: reporte clínico completo tal como quedó editado en pantalla ──
+  var resumenMedico=repText||[
     "══════════════════════════════════════",
     "   REPORTE CLINICO INTEGRAL - BIOSOMA",
     "══════════════════════════════════════",
@@ -670,27 +684,14 @@ async function enviarCorreoConPDF(p,rep,planLineas){
     "\"Las personas no quieren diagnosticos, quieren sanarse.\""
   ].join("\n");
 
-  // ── CORREO PARA EL PACIENTE: solo lo específicamente indicado, no los rubros base ──
-  var tienePlan=planLineas&&planLineas.length>0;
-  var planTxt=tienePlan
-    ?planLineas.map(function(l,i){return "  "+(i+1)+". "+l;}).join("\n")
-    :"  (El equipo m\xe9dico completar\xe1 su plan personalizado en la pr\xf3xima revisi\xf3n.)";
+  // ── CORREO PARA EL PACIENTE: el mismo contenido real editado, con saludo personalizado ──
   var resumenPaciente=[
     "Estimado/a "+(h.nombre||"Paciente")+",",
     "",
-    "Le compartimos el resumen de su evaluaci\xf3n cl\xednica realizada en "+cfg.clinica+".",
-    "M\xe9dico tratante: "+medicoNombre+"   |   Fecha: "+fecha,
+    "Le compartimos el resumen de su evaluaci\u00f3n cl\u00ednica realizada en "+cfg.clinica+".",
+    "M\u00e9dico tratante: "+medicoNombre+"   |   Fecha: "+fecha,
     "",
-    "\u2554\u2550\u2550 SU DIAGN\xd3STICO PRINCIPAL \u2550\u2550\u2557",
-    rep?rep.dupla_top||"":"",
-    "",
-    "\u2554\u2550\u2550 SU PLAN DE SEGUIMIENTO \u2550\u2550\u2557",
-    planTxt,
-    "",
-    "\u2554\u2550\u2550 PR\xd3XIMOS PASOS \u2550\u2550\u2557",
-    "  \u2022 Siga las indicaciones anteriores tal como se le explicaron en consulta.",
-    "  \u2022 Su pr\xf3ximo control ser\xe1 coordinado por la cl\xednica.",
-    "  \u2022 Para consultas, comun\xedquese al "+medicoTel+".",
+    patientText||resumenMedico,
     "",
     "Atentamente,",
     medicoNombre,
@@ -699,7 +700,6 @@ async function enviarCorreoConPDF(p,rep,planLineas){
   ].join("\n");
 
   try{
-    console.log("[BIOSOMA email] medicoCorreo:",JSON.stringify(medicoCorreo),"h.correo:",JSON.stringify(h.correo));
     var r1={ok:false,motivo:"Paciente sin correo registrado"},r2={ok:false,motivo:"M\u00e9dico sin correo registrado"};
     // Correo al paciente
     if(h.correo){
@@ -733,7 +733,7 @@ async function enviarCorreoConPDF(p,rep,planLineas){
       },cfg.emailjs_public);
       r2={ok:res2.status===200,motivo:res2.status===200?"":"EmailJS devolvi\u00f3 estado "+res2.status};
     }
-    return{ok:true,paciente:r1.ok,medico:r2.ok,pacienteMotivo:r1.motivo,medicoMotivo:r2.motivo};
+    return{ok:true,paciente:r1.ok,medico:r2.ok,pacienteMotivo:r1.motivo,medicoMotivo:r2.motivo,medicoEmailUsado:medicoCorreo};
   }catch(e){return{ok:false,msg:e.message};}
 }
 
@@ -1549,6 +1549,8 @@ function vReporte(){
     +'</div><span class="edit-hint">Abordaje emocional del m\xe9dico (editable)</span>'
     +'<div class="edit-area" id="abordaje-emocional-area" contenteditable="true" style="min-height:50px"></div>';
 
+  var patientDraftHtml="Su evaluaci\u00f3n mostr\u00f3 que el \u00e1rea que m\u00e1s necesita atenci\u00f3n en este momento es:<br><b>"+(rep.dupla_top||"")+"</b><br><br>Junto con su m\u00e9dico dise\u00f1amos un plan de acompa\u00f1amiento personalizado (suplementos, terapias y/o estudios recomendados seg\u00fan su caso).<br><br>Por favor siga las indicaciones que se le explicaron en consulta y aproveche su pr\u00f3ximo control para resolver cualquier duda.";
+
   var n=rep.dental_relevante;
   var shareURL="";
   d.innerHTML=
@@ -1611,6 +1613,10 @@ function vReporte(){
     +'<div style="font-size:11px;color:#6B665A">MEDICELL / MEDISER \xb7 info@medicellcr.com \xb7 +506 2447-2858</div>'
     +'<div style="font-size:11px;color:#8A8578;margin-top:4px">Generado con Sistema BIOSOMA \xb7 Medicina Regenerativa Integral</div>'
     +'</div>'
+    +'</div>'
+    +'<div class="card" style="margin-top:14px;border:1.5px solid #C08A3E;background:#FFFBF2">'
+    +'<div style="font-size:11px;font-weight:700;color:#C08A3E;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">\u2709\ufe0f Versi\u00f3n para el paciente (educativa y simple) \u2014 esto es lo que recibir\u00e1 por correo</div>'
+    +'<div id="patient-rep-content" contenteditable="true" style="font-size:13px;line-height:1.7;color:#1F2A2E;outline:none;border:1px dashed transparent;border-radius:5px;padding:6px" onfocus="this.style.borderColor=\'#C08A3E\'" onblur="this.style.borderColor=\'transparent\'">'+patientDraftHtml+'</div>'
     +'</div>';
 
   (async function(){
@@ -1856,7 +1862,7 @@ function vReporte(){
       _ms.push(sr.ok?"<div style=\"color:#0F6B65\">\u2713 Registrado en Google Sheets</div>":"<div style=\"color:#8B6010\">\u26a0\ufe0f Sheets: "+(sr.msg||"no configurado")+"</div>");
       if(er.ok&&er.paciente)_ms.push("<div style=\"color:#0F6B65\">\u2713 Correo enviado al paciente</div>");
       else if(er.ok)_ms.push("<div style=\"color:#8B6010\">\u26a0\ufe0f Paciente: "+(er.pacienteMotivo||"no enviado")+"</div>");
-      if(er.ok&&er.medico)_ms.push("<div style=\"color:#0F6B65\">\u2713 Correo enviado al m\xe9dico ("+getCfg().email_medico+")</div>");
+      if(er.ok&&er.medico)_ms.push("<div style=\"color:#0F6B65\">\u2713 Correo enviado al m\xe9dico ("+(er.medicoEmailUsado||getCfg().email_medico)+")</div>");
       else if(er.ok)_ms.push("<div style=\"color:#8B6010\">\u26a0\ufe0f M\xe9dico: "+(er.medicoMotivo||"no enviado")+"</div>");
       if(!er.ok)_ms.push("<div style=\"color:#B33A3A\">\u26a0\ufe0f "+(er.msg||"No se pudo enviar el correo")+" \u2014 revise \u2699\ufe0f Configuraci\xf3n</div>");
       if(_m){_m.style.background=ok?"#EAF5EF":"#FEF0EE";_m.style.borderColor=ok?"#0F6B65":"#B33A3A";_m.innerHTML=_ms.join("");}
