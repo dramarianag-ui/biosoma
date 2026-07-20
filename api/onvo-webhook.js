@@ -122,6 +122,10 @@ module.exports = async (req, res) => {
     // 3) Generar código profesional y guardar SOLO ahora que el cobro está confirmado
     const codigoProfesional = generarCodigoProfesional();
 
+    // Si la llave secreta de ONVO es de modo TEST (sk_test_...), marcamos el registro
+    // como prueba para que nunca aparezca en el selector de médicos que ven los pacientes.
+    const esPrueba = ONVO_SECRET_KEY.startsWith('sk_test_');
+
     const guardarResp = await fetch(`${SUPABASE_URL}/rest/v1/profesionales`, {
       method: 'POST',
       headers: {
@@ -137,7 +141,8 @@ module.exports = async (req, res) => {
         especialidad,
         rol: 'medico',
         onvo_subscription_id: subscriptionId,
-        activo: true
+        activo: true,
+        es_prueba: esPrueba
       })
     });
 
