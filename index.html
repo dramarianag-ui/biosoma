@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -513,7 +514,7 @@ async function generarReporte(p){
 var CFG_KEY="biosoma_config";
 var CFG_DEFAULT={clinica:"MEDICELL / MEDISER",medico:"Dra. Mariana G\u00f3mez Morales",email_medico:"",telefono:"+506 2447-2858",emailjs_service:"",emailjs_template:"",emailjs_public:"",sheets_url:"",notif_activa:false};
 function getCfg(){try{var r=localStorage.getItem(CFG_KEY);return r?Object.assign({},CFG_DEFAULT,JSON.parse(r)):Object.assign({},CFG_DEFAULT);}catch(e){return Object.assign({},CFG_DEFAULT);}}
-function saveCfg(o){try{localStorage.setItem(CFG_KEY,JSON.stringify(o));}catch(e){}}
+function saveCfg(o){try{localStorage.setItem(CFG_KEY,JSON.stringify(o));}catch(e){}if(typeof sbSaveCfg==="function")sbSaveCfg(o);}
 
 async function enviarASheets(p,rep){
   var cfg=getCfg();if(!cfg.sheets_url)return{ok:false,msg:"URL de Sheets no configurada"};
@@ -892,6 +893,27 @@ function vConfig(){
 var SB_URL='https://ylihdfznigdyzmanwrdl.supabase.co';
 var SB_KEY='sb_publishable_TrXvOhCHaxm8Bme-mXYV0w_hZszUGHd';
 function sbH(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};}
+// Configuración del sistema guardada en la nube (Supabase) — así aparece automáticamente
+// en cualquier navegador o dispositivo, sin tener que reconfigurar cada vez.
+async function sbGetCfg(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/config_sistema?id=eq.global&select=*',{headers:sbH()});
+    var d=await r.json();
+    return (Array.isArray(d)&&d.length)?d[0]:null;
+  }catch(e){return null;}
+}
+async function sbSaveCfg(o){
+  try{
+    var body=Object.assign({id:'global'},o);
+    delete body.updated_at;
+    await fetch(SB_URL+'/rest/v1/config_sistema',{
+      method:'POST',
+      headers:Object.assign({},sbH(),{'Prefer':'resolution=merge-duplicates'}),
+      body:JSON.stringify(body)
+    });
+    return true;
+  }catch(e){return false;}
+}
 function esAdmin(p){if(!p)return false;var r=(p.rol||'').toLowerCase();return r==='admin'||r==='administracion'||r==='administrador';}
 async function sbLogin(cod){try{var r=await fetch(SB_URL+'/rest/v1/profesionales?codigo=eq.'+encodeURIComponent(cod)+'&activo=eq.true',{headers:sbH()});var d=await r.json();if(Array.isArray(d)&&d.length)return{ok:true,prof:d[0]};return{ok:false,msg:'Codigo incorrecto'};}catch(e){return{ok:false,msg:'Error: '+e.message};}}
 async function sbSavePac(p,codigoOverride){if(!p||p.id==='demo1')return false;try{var prof=S.profesional||{};var cod=codigoOverride||prof.codigo||'ADMIN2026';var r=await fetch(SB_URL+'/rest/v1/pacientes',{method:'POST',headers:Object.assign({},sbH(),{'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({id:p.id,profesional_codigo:cod,historia:p.historia||{},evaluaciones:p.evaluaciones||{},dental:p.dental||{},duplas_completadas:p.duplas_completadas||[],circuito:p.circuito||[],reporte:p.reporte||null,status:p.status||'pendiente',updated_at:new Date().toISOString()})});if(!r.ok){console.warn('sbSave: HTTP '+r.status,await r.text());return false;}return true;}catch(e){console.warn('sbSave:',e.message);return false;}}
@@ -967,6 +989,7 @@ function vProfesionales(){
       return '<div class="pac-row"><div style="flex:1"><div style="font-size:13.5px;font-weight:600">'+p.nombre
         +' <span style="font-family:monospace;font-size:11px;background:#EAF5EF;color:#0F6B65;padding:2px 7px;border-radius:4px">'+p.codigo+'</span>'
         +(esAdmin(p)?' <span style="font-size:10px;background:#C08A3E;color:#fff;padding:2px 6px;border-radius:4px">ADMIN</span>':'')
+        +(p.es_prueba?' <span style="font-size:10px;background:#B33A3A;color:#fff;padding:2px 6px;border-radius:4px">PRUEBA</span>':'')
         +(esYo?' <span style="font-size:10px;background:#2C5F8A;color:#fff;padding:2px 6px;border-radius:4px">USTED</span>':'')
         +'</div><div class="muted" style="font-size:11px">'+(p.especialidad||'')+' - '+(p.correo||'')+'</div>'
         +'<div style="font-size:11px;color:'+(p.activo?'#4A7C59':'#B33A3A')+'">'+(p.activo?'Activo':'Inactivo')+'</div></div>'
@@ -1146,7 +1169,7 @@ function vPac(){
       S.medicoAsignado=S.profesional.codigo;
       return;
     }
-    var profs=(await sbGetProfs()).filter(function(p){return p.activo!==false;});
+    var profs=(await sbGetProfs()).filter(function(p){return p.activo!==false&&!p.es_prueba;});
     var urlCod=null;try{urlCod=new URLSearchParams(window.location.search).get("prof");}catch(e){}
     if(urlCod)urlCod=urlCod.trim().toUpperCase();
     if(!profs.length){
@@ -1957,11 +1980,23 @@ function vReporte(){
   return d;
 }
 // Cargar desde URL si hay parámetro ?rep=
-if(!loadFromURL()){
-  var _params=new URLSearchParams(window.location.search);
-  if(_params.get("vr"))loadFromURLShort();
-  else render();
-}
+(async function(){
+  // Sincroniza la configuración desde la nube ANTES de mostrar cualquier pantalla,
+  // así aparece automática en cualquier navegador/dispositivo.
+  try{
+    var _remoto=typeof sbGetCfg==="function"?await sbGetCfg():null;
+    if(_remoto){
+      var _merged=Object.assign({},CFG_DEFAULT,_remoto);
+      delete _merged.id;delete _merged.updated_at;
+      localStorage.setItem(CFG_KEY,JSON.stringify(_merged));
+    }
+  }catch(e){}
+  if(!loadFromURL()){
+    var _params=new URLSearchParams(window.location.search);
+    if(_params.get("vr"))loadFromURLShort();
+    else render();
+  }
+})();
 
 
 
