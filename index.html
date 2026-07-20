@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -698,7 +699,8 @@ async function enviarCorreoConPDF(p,rep,planLineas){
   ].join("\n");
 
   try{
-    var r1={ok:true},r2={ok:true};
+    console.log("[BIOSOMA email] medicoCorreo:",JSON.stringify(medicoCorreo),"h.correo:",JSON.stringify(h.correo));
+    var r1={ok:false,motivo:"Paciente sin correo registrado"},r2={ok:false,motivo:"M\u00e9dico sin correo registrado"};
     // Correo al paciente
     if(h.correo){
       var res=await emailjs.send(cfg.emailjs_service,cfg.emailjs_template,{
@@ -713,7 +715,7 @@ async function enviarCorreoConPDF(p,rep,planLineas){
         eje_prioritario:rep?rep.dupla_top||"":"",
         destinatario:"Paciente"
       },cfg.emailjs_public);
-      r1={ok:res.status===200};
+      r1={ok:res.status===200,motivo:res.status===200?"":"EmailJS devolvi\u00f3 estado "+res.status};
     }
     // Correo al medico tratante (el asignado al paciente) con reporte completo
     if(medicoCorreo){
@@ -729,9 +731,9 @@ async function enviarCorreoConPDF(p,rep,planLineas){
         eje_prioritario:rep?rep.dupla_top||"":"",
         destinatario:"Medico"
       },cfg.emailjs_public);
-      r2={ok:res2.status===200};
+      r2={ok:res2.status===200,motivo:res2.status===200?"":"EmailJS devolvi\u00f3 estado "+res2.status};
     }
-    return{ok:true,paciente:r1.ok,medico:r2.ok};
+    return{ok:true,paciente:r1.ok,medico:r2.ok,pacienteMotivo:r1.motivo,medicoMotivo:r2.motivo};
   }catch(e){return{ok:false,msg:e.message};}
 }
 
@@ -1853,7 +1855,9 @@ function vReporte(){
       var _ms=[];
       _ms.push(sr.ok?"<div style=\"color:#0F6B65\">\u2713 Registrado en Google Sheets</div>":"<div style=\"color:#8B6010\">\u26a0\ufe0f Sheets: "+(sr.msg||"no configurado")+"</div>");
       if(er.ok&&er.paciente)_ms.push("<div style=\"color:#0F6B65\">\u2713 Correo enviado al paciente</div>");
+      else if(er.ok)_ms.push("<div style=\"color:#8B6010\">\u26a0\ufe0f Paciente: "+(er.pacienteMotivo||"no enviado")+"</div>");
       if(er.ok&&er.medico)_ms.push("<div style=\"color:#0F6B65\">\u2713 Correo enviado al m\xe9dico ("+getCfg().email_medico+")</div>");
+      else if(er.ok)_ms.push("<div style=\"color:#8B6010\">\u26a0\ufe0f M\xe9dico: "+(er.medicoMotivo||"no enviado")+"</div>");
       if(!er.ok)_ms.push("<div style=\"color:#B33A3A\">\u26a0\ufe0f "+(er.msg||"No se pudo enviar el correo")+" \u2014 revise \u2699\ufe0f Configuraci\xf3n</div>");
       if(_m){_m.style.background=ok?"#EAF5EF":"#FEF0EE";_m.style.borderColor=ok?"#0F6B65":"#B33A3A";_m.innerHTML=_ms.join("");}
       _be.disabled=false;_be.style.opacity="1";_be.textContent="\u2709\ufe0f Enviar correo al paciente";
