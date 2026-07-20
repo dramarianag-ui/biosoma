@@ -589,11 +589,27 @@ async function enviarCorreoConPDF(p,rep,planLineas){
     if(repEl)repText=repEl.innerText.replace(/\n{3,}/g,"\n\n").trim();
   }catch(e){}
 
-  // Versión educativa/simple para el paciente, editada por el médico en pantalla
+  // Versión para el paciente: se toma EXACTAMENTE de 3 secciones del reporte en pantalla
+  // (eje funcional prioritario con %, emociones comprometidas, observaciones/plan de seguimiento)
   var patientText="";
   try{
-    var patEl=document.getElementById("patient-rep-content");
-    if(patEl)patientText=patEl.innerText.replace(/\n{3,}/g,"\n\n").trim();
+    var _ejeEl=document.getElementById("eje-prioritario-area");
+    var _emoEl=document.getElementById("emociones-content-wrap");
+    var _obsEl=document.getElementById("observaciones-content-wrap");
+    var _partes=[];
+    if(_ejeEl){
+      _partes.push("EJE FUNCIONAL PRIORITARIO");
+      _partes.push(_ejeEl.innerText.trim());
+    }
+    if(_emoEl){
+      _partes.push("");
+      _partes.push(_emoEl.innerText.trim());
+    }
+    if(_obsEl){
+      _partes.push("");
+      _partes.push(_obsEl.innerText.trim());
+    }
+    patientText=_partes.join("\n").replace(/\n{3,}/g,"\n\n").trim();
   }catch(e){}
 
   // Usar el profesional REALMENTE asignado al paciente (no el médico general de Configuración)
@@ -684,7 +700,7 @@ async function enviarCorreoConPDF(p,rep,planLineas){
     "\"Las personas no quieren diagnosticos, quieren sanarse.\""
   ].join("\n");
 
-  // ── CORREO PARA EL PACIENTE: el mismo contenido real editado, con saludo personalizado ──
+  // ── CORREO PARA EL PACIENTE: eje funcional prioritario + emociones + observaciones/plan de seguimiento ──
   var resumenPaciente=[
     "Estimado/a "+(h.nombre||"Paciente")+",",
     "",
@@ -1549,8 +1565,6 @@ function vReporte(){
     +'</div><span class="edit-hint">Abordaje emocional del m\xe9dico (editable)</span>'
     +'<div class="edit-area" id="abordaje-emocional-area" contenteditable="true" style="min-height:50px"></div>';
 
-  var patientDraftHtml="Su evaluaci\u00f3n mostr\u00f3 que el \u00e1rea que m\u00e1s necesita atenci\u00f3n en este momento es:<br><b>"+(rep.dupla_top||"")+"</b><br><br>Junto con su m\u00e9dico dise\u00f1amos un plan de acompa\u00f1amiento personalizado (suplementos, terapias y/o estudios recomendados seg\u00fan su caso).<br><br>Por favor siga las indicaciones que se le explicaron en consulta y aproveche su pr\u00f3ximo control para resolver cualquier duda.";
-
   var n=rep.dental_relevante;
   var shareURL="";
   d.innerHTML=
@@ -1585,11 +1599,11 @@ function vReporte(){
     +'<span class="rep-sec">1. Resumen cl\xednico del paciente</span>'
     +'<div class="rep-txt" id="rep-resumen" contenteditable="true" style="outline:none;border:1px dashed transparent;border-radius:5px;padding:4px" onfocus="this.style.borderColor=\'#C08A3E\'" onblur="this.style.borderColor=\'transparent\'">'+rep.resumen+'</div>'
     +antHtml
-    +'<span class="rep-sec">2. Eje funcional prioritario \u2014 Circuito diagn\xf3stico</span>'
-    +'<div class="rep-txt" contenteditable="true" style="outline:none;border:1px dashed transparent;border-radius:5px;padding:4px" onfocus="this.style.borderColor=\'#C08A3E\'" onblur="this.style.borderColor=\'transparent\'">'+rep.dupla_top+'</div>'
+    +'<span class="rep-sec" id="eje-prioritario-titulo">2. Eje funcional prioritario \u2014 Circuito diagn\xf3stico</span>'
+    +'<div class="rep-txt" id="eje-prioritario-area" contenteditable="true" style="outline:none;border:1px dashed transparent;border-radius:5px;padding:4px" onfocus="this.style.borderColor=\'#C08A3E\'" onblur="this.style.borderColor=\'transparent\'">'+rep.dupla_top+'</div>'
     +penHtml
     +(n?'<span class="rep-sec">3. Evaluaci\xf3n neurofocal dental</span><div class="rep-txt" id="dental-eval-area" contenteditable="true" style="outline:none;border:1px dashed transparent;border-radius:5px;padding:4px" onfocus="this.style.borderColor=\'#C08A3E\'" onblur="this.style.borderColor=\'transparent\'">'+rep.dental+'</div>':"")
-    +'<span class="rep-sec">'+(n?4:3)+'. Emociones comprometidas</span>'+emoHtml
+    +'<div id="emociones-content-wrap"><span class="rep-sec">'+(n?4:3)+'. Emociones comprometidas</span>'+emoHtml+'</div>'
     +'<span class="rep-sec">'+(n?5:4)+'. Plan terap\xe9utico integral</span>'
     +'<span class="subsec">Terapia Neural \xb7 Acupuntura / Biopuntura</span>'
     +acuHtml
@@ -1604,19 +1618,15 @@ function vReporte(){
     +labHtml
     +'<div style="margin-top:12px"><span class="lbl">Notas cl\xednicas del m\xe9dico</span>'
     +'<div class="edit-area" id="notas-medico-area" contenteditable="true" style="margin-top:4px;min-height:60px">'+rep.notas+'</div></div>'
-    +'<span class="rep-sec">Observaciones \u2014 Plan de seguimiento</span>'
+    +'<div id="observaciones-content-wrap"><span class="rep-sec">Observaciones \u2014 Plan de seguimiento</span>'
     +'<ol id="plan-auto-list" style="margin:0 0 8px 18px;padding:0;font-size:12.5px;line-height:1.75;color:#1F2A2E"><li style="color:#9A9690;list-style:none;margin-left:-18px">A\xfan no hay elementos marcados.</li></ol>'
-    +'<div class="edit-area" id="plan-manual" contenteditable="true" style="min-height:50px" data-ph="Indicaciones adicionales, pr\xf3xima cita, observaciones\u2026"></div>'
+    +'<div class="edit-area" id="plan-manual" contenteditable="true" style="min-height:50px" data-ph="Indicaciones adicionales, pr\xf3xima cita, observaciones\u2026"></div></div>'
     +'<div style="margin-top:18px;padding-top:14px;border-top:1px solid #E0DDD4;text-align:center">'
     +'<div style="font-size:12px;color:#6B665A;font-style:italic;margin-bottom:8px">&ldquo;Las personas no quieren diagn\xf3sticos, quieren sanarse.&rdquo;</div>'
     +'<div id="doc-contact" style="font-size:12.5px;color:#1F2A2E;font-weight:600;margin-bottom:2px">Cargando datos del profesional\u2026</div>'
     +'<div style="font-size:11px;color:#6B665A">MEDICELL / MEDISER \xb7 info@medicellcr.com \xb7 +506 2447-2858</div>'
     +'<div style="font-size:11px;color:#8A8578;margin-top:4px">Generado con Sistema BIOSOMA \xb7 Medicina Regenerativa Integral</div>'
     +'</div>'
-    +'</div>'
-    +'<div class="card" style="margin-top:14px;border:1.5px solid #C08A3E;background:#FFFBF2">'
-    +'<div style="font-size:11px;font-weight:700;color:#C08A3E;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">\u2709\ufe0f Versi\u00f3n para el paciente (educativa y simple) \u2014 esto es lo que recibir\u00e1 por correo</div>'
-    +'<div id="patient-rep-content" contenteditable="true" style="font-size:13px;line-height:1.7;color:#1F2A2E;outline:none;border:1px dashed transparent;border-radius:5px;padding:6px" onfocus="this.style.borderColor=\'#C08A3E\'" onblur="this.style.borderColor=\'transparent\'">'+patientDraftHtml+'</div>'
     +'</div>';
 
   (async function(){
