@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -345,6 +346,7 @@ function pac(){return S.pacs.find(function(p){return p.id===S.pid;});}
 function set(o){Object.assign(S,o);render();}
 function persist(p){S.pacs=S.pacs.map(function(x){return x.id===p.id?p:x;});if(typeof savePacsToStorage==="function")savePacsToStorage(S.pacs);sbSavePac(p,p.profesional_codigo);render();}
 function el(){return document.createElement("div");}
+function esc(s){return (s===null||s===undefined?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 
 function pctDupla(key){
   var p=pac();if(!p||!p.evaluaciones[key])return 0;
@@ -397,8 +399,7 @@ function siguienteEnCircuito(completadas,circuito){
   return null;
 }
 
-async function analizarIA(p){
-  await new Promise(function(r){setTimeout(r,1200);});
+function calcularEjeIA(p){
   var h=(p&&p.historia)||{};
   var txt=[h.preguntaTransformacional,h.motivoConsulta,h.antPersonales,h.antQuirurgicos,h.medicamentos,h.diagnosticoPrincipal,h.antFamiliares,h.contactoToxicos,h.hormProstata,h.historiaDental,h.otrasTerapias].filter(Boolean).join(" ").toLowerCase()||"";
   var scores={madera:0,fuego:0,tierra:0,metal:0,agua:0};
@@ -426,10 +427,15 @@ async function analizarIA(p){
   if(txt.includes("omeprazol"))hx.push("gastritis cr\u00f3nica medicada");
   if(txt.includes("fatiga cr\u00f3nica"))hx.push("s\u00edndrome de fatiga cr\u00f3nica");
   if(txt.includes("diabetes"))hx.push("antecedente familiar DM2");
-  var just="Eje prioritario: "+D[top].eje+" ("+D[top].code+"). "+(hx.length>0?"Hallazgos: "+hx.join("; ")+". ":"")+"Respuesta transformacional confirma el patr\u00f3n de mayor impacto cl\u00ednico-emocional. Ref: Maciocia G. Foundations of Chinese Medicine, 3\u00aa ed. Elsevier, 2015.";
+  var just="Eje prioritario: "+D[top].eje+" ("+D[top].code+"). "+(hx.length>0?"Hallazgos: "+hx.join("; ")+". ":"")+(varita.trim()?"Respuesta a la pregunta clave confirma el patr\u00f3n de mayor impacto cl\u00ednico-emocional. ":"Basado en la historia cl\u00ednica; registre la respuesta a la pregunta clave para mayor precisi\u00f3n. ")+"Ref: Maciocia G. Foundations of Chinese Medicine, 3\u00aa ed. Elsevier, 2015.";
   return{dupla_principal:top,dupla_secundaria:sec,confianza:conf,justificacion:just,
     razonamiento_secundaria:D[sec].code+" — concordancia secundaria por historial cl\u00ednico.",
     circuito:buildCircuito(top)};
+}
+
+async function analizarIA(p){
+  await new Promise(function(r){setTimeout(r,1200);});
+  return calcularEjeIA(p);
 }
 
 async function generarReporte(p){
@@ -1139,12 +1145,6 @@ function vPac(){
   +'<span class="sec">7. HISTORIAL CL\xcdNICO</span>'
   +'<label class="f"><span class="lbl">Diagn\xf3sticos (uno por l\xednea si tiene varios)</span><textarea id="fdx" rows="3" placeholder="Ej:&#10;1. S\xedndrome de fatiga cr\xf3nica&#10;2. Hipotiroidismo"></textarea></label>'
   +'<label class="f"><span class="lbl">Motivo de consulta \xb7 S\xedntomas actuales *</span><textarea id="fmc" rows="4" placeholder="Describa qu\xe9 siente, desde cu\xe1ndo y c\xf3mo ha cambiado. Ej: Fatiga e insomnio desde hace 2 a\xf1os, palpitaciones nocturnas frecuentes."></textarea></label>'
-  +'<div style="border:2px solid #C08A3E;border-radius:12px;padding:16px;margin:18px 0;background:#FFFBF2">'
-  +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:#C08A3E;color:#fff;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px">OBLIGATORIO</span><span style="font-size:12.5px;font-weight:700;color:#8B6010">La secci\xf3n m\xe1s importante de esta historia</span></div>'
-  +'<div class="quote" style="margin:0 0 8px">\u201cSi tuviera una varita m\xe1gica y pudiera eliminar HOY MISMO un s\xedntoma, emoci\xf3n o problema de salud, \xbfcu\xe1l ser\xeda?\u201d</div>'
-  +'<div class="muted" style="font-size:11.5px;margin-bottom:10px">Piense en el s\xedntoma, situaci\xf3n de salud o diagn\xf3stico que es m\xe1s importante para usted de empezar a tratar o mejorar ahora mismo.</div>'
-  +'<label class="f"><span class="lbl">Respuesta del paciente *</span><textarea id="fvr" rows="4" placeholder="Escriba con sus propias palabras lo que m\xe1s le afecta hoy y quiere resolver primero."></textarea></label>'
-  +'</div>'
   +'<span class="sec">8. MEDICAMENTOS, SUPLEMENTOS Y TERAPIAS</span>'
   +'<label class="f"><span class="lbl">Medicamentos actuales (nombre y dosis)</span><textarea id="fme" rows="3" placeholder="Ej: Levotiroxina 50mcg, 1 vez al d\xeda"></textarea></label>'
   +'<label class="f"><span class="lbl">Suplementos \xb7 otros tratamientos</span><textarea id="fsu" rows="2" placeholder="Ej: Vitamina D, omega 3"></textarea></label>'
@@ -1188,7 +1188,7 @@ function vPac(){
     sel.onchange=function(){S.medicoAsignado=sel.value;};
   })();
   d.querySelector("#fnac").onchange=function(e){var ed=calcEdad(e.target.value);d.querySelector("#fe").value=ed;S.form=Object.assign({},S.form,{fechaNacimiento:e.target.value,edad:ed});};
-  var fmap={fn:"nombre",fe:"edad",fc:"cedula",fg:"genero",fs:"tipoSangre",fre:"religion",fpr:"profesion",fco:"correo",fte:"celular",fem:"emergencia",fetel:"emergenciaTel",faf:"antFamiliares",fap:"antPersonales",faq:"antQuirurgicos",fcic:"cicatrices",fhges:"hormGestas",fhpar:"hormPartos",fhabo:"hormAbortos",fhces:"hormCesareas",fhpro:"hormProstata",ftab:"tabaco",falc:"alcohol",fdr:"drogas",fhabotros:"habitosOtros",ftox:"contactoToxicos",faa:"alergiaAlimentos",fam:"alergiaMedicamentos",fad:"alergiaDetalle",fden:"historiaDental",fdx:"diagnosticoPrincipal",fmc:"motivoConsulta",fme:"medicamentos",fsu:"suplementos",fterap:"otrasTerapias",fvr:"preguntaTransformacional"};
+  var fmap={fn:"nombre",fe:"edad",fc:"cedula",fg:"genero",fs:"tipoSangre",fre:"religion",fpr:"profesion",fco:"correo",fte:"celular",fem:"emergencia",fetel:"emergenciaTel",faf:"antFamiliares",fap:"antPersonales",faq:"antQuirurgicos",fcic:"cicatrices",fhges:"hormGestas",fhpar:"hormPartos",fhabo:"hormAbortos",fhces:"hormCesareas",fhpro:"hormProstata",ftab:"tabaco",falc:"alcohol",fdr:"drogas",fhabotros:"habitosOtros",ftox:"contactoToxicos",faa:"alergiaAlimentos",fam:"alergiaMedicamentos",fad:"alergiaDetalle",fden:"historiaDental",fdx:"diagnosticoPrincipal",fmc:"motivoConsulta",fme:"medicamentos",fsu:"suplementos",fterap:"otrasTerapias"};
   Object.entries(fmap).forEach(function(x){var e2=d.querySelector("#"+x[0]);if(e2)e2.oninput=function(ev){S.form=Object.assign({},S.form,{[x[1]]:ev.target.value});};});
   function wireLadaField(numId,ladaId,formKey){
     var numEl=d.querySelector("#"+numId),ladaEl=d.querySelector("#"+ladaId);
@@ -1202,7 +1202,6 @@ function vPac(){
   d.querySelector("#benv").onclick=async function(){
     if(!S.form.nombre.trim()){alert("Ingrese el nombre completo.");return;}
     if(!S.medicoAsignado){alert("Seleccione a su m\xe9dico tratante.");return;}
-    if(!S.form.preguntaTransformacional.trim()){alert("Responda la pregunta transformacional.");return;}
     if(!S.consent){alert("Acepte el consentimiento informado.");return;}
     var btn=this;btn.disabled=true;btn.textContent="Enviando\u2026";
     var reg={id:Date.now().toString(36),createdAt:new Date().toISOString(),status:"pendiente",
@@ -1333,6 +1332,7 @@ function vPanel(){
 
 function vTablero(){
   var p=pac();if(!p)return el();
+  var h=p.historia||{};
   var k=S.dupla;var du=D[k];
   var ev=p.evaluaciones[k]||{items:{},subSels:{},notas:""};
 
@@ -1421,6 +1421,28 @@ function vTablero(){
   var nextKey=idxCirc<circ.length-1?circ[idxCirc+1]:null;
   var yaCompletoActual=completadas.includes(k);
 
+  var resumenCampos=[
+    ["Motivo de consulta",h.motivoConsulta],
+    ["Diagn\xf3stico principal",h.diagnosticoPrincipal],
+    ["Antecedentes personales",h.antPersonales],
+    ["Antecedentes familiares",h.antFamiliares],
+    ["Medicamentos actuales",h.medicamentos],
+    ["Suplementos",h.suplementos],
+    ["Otras terapias",h.otrasTerapias]
+  ].filter(function(x){return (x[1]||"").toString().trim();});
+  var resumenHtml='<div class="card" style="margin-bottom:12px;background:#F7F5EC">'
+    +'<div style="font-size:12.5px;font-weight:700;color:#2C5F8A;margin-bottom:8px">\ud83d\udccb Resumen de historia cl\xednica \xb7 '+esc(h.nombre)+(h.edad?' \xb7 '+esc(h.edad)+' a\xf1os':'')+'</div>'
+    +(resumenCampos.length?'<div style="font-size:11.5px;line-height:1.75;color:#4A463C">'+resumenCampos.map(function(c){return '<div><b>'+c[0]+':</b> '+esc(c[1])+'</div>';}).join("")+'</div>'
+      :'<div class="muted" style="font-size:11.5px">Historia cl\xednica sin datos adicionales registrados.</div>')
+    +'</div>';
+
+  var preguntaClaveHtml='<div style="border:1.5px solid #C08A3E;background:#FFF8EC;border-radius:9px;padding:12px 14px;margin-bottom:12px">'
+    +'<div style="font-size:11px;font-weight:700;color:#8B6010;margin-bottom:5px">\ud83e\ude84 Pregunta clave \xb7 preg\xfantesela al paciente en este momento</div>'
+    +'<div style="font-size:11px;font-style:italic;color:#8B6010;margin-bottom:8px">\u201cSi tuviera una varita m\xe1gica y pudiera eliminar HOY MISMO un s\xedntoma, emoci\xf3n o problema de salud, \xbfcu\xe1l ser\xeda?\u201d</div>'
+    +'<label class="f" style="margin:0"><span class="lbl" style="font-size:10.5px">Respuesta del paciente \xb7 registrada por el m\xe9dico</span><textarea id="varita-input" rows="3" placeholder="Escriba aqu\xed, con las palabras del paciente, lo que responda\u2026">'+esc(h.preguntaTransformacional||"")+'</textarea></label>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="bp" id="btn-calc-eje" style="font-size:11.5px;padding:7px 14px">\ud83d\udcca Calcular eje de inicio</button></div>'
+    +'</div>';
+
   var navHtml='<div style="display:flex;gap:8px;margin-top:16px">'
     +(prevKey?'<button class="bs2" id="btn-prev" style="flex:1;font-size:12.5px">\u2190 '+D[prevKey].code+'</button>':'<div style="flex:1"></div>')
     +(nextKey?'<button class="bp" id="btn-next" style="flex:1;font-size:12.5px">'+D[nextKey].code+' \u2192</button>'
@@ -1431,6 +1453,7 @@ function vTablero(){
   var bottomHtml=navHtml;
 
   d.innerHTML='<div style="display:flex;justify-content:space-between;margin-bottom:12px"><button class="back" id="bpan" style="margin-bottom:0">\u2190 Pacientes</button></div>'
+  +resumenHtml+preguntaClaveHtml
   +(ia?'<div class="info-box"><div class="info-head"><span>\u2192</span>Eje asignado \xb7 an\xe1lisis del historial cl\xednico<span class="conf">Confianza: '+ia.confianza+'</span></div><div style="font-size:12.5px;line-height:1.65">'+ia.justificacion+'</div><div style="font-size:11.5px;color:#6B665A;margin-top:6px">2.\u00aa opci\xf3n: <b>'+D[ia.dupla_secundaria].code+'</b> \u2014 '+ia.razonamiento_secundaria+'</div></div>':"")
   +'<div class="card"><div class="dup-head"><div class="cb2" style="border-color:'+du.color+';color:'+du.color+'">'+du.code+'</div><div style="flex:1"><div class="h2" style="margin-bottom:3px">'+du.nombre+'</div><div class="muted">'+du.eje+'</div></div></div>'
   +'<div class="pbar-wrap"><div class="pbar-lbl"><span>Compromiso del eje</span><span style="font-weight:700;color:'+(pct>=90?"#B33A3A":pct>=60?"#C08A3E":"#4A7C59")+'">'+pct+'%'+(pct>=90?" \u26a0\ufe0f":"")+'</span></div><div class="pbar"><div class="pbar-fill" style="width:'+pct+'%;background:'+(pct>=90?"#B33A3A":pct>=60?"#C08A3E":du.color)+'"></div></div></div>'
@@ -1473,6 +1496,23 @@ function vTablero(){
   });
   var dn=d.querySelector("#dental-notas");
   if(dn)dn.oninput=function(e){var pp=Object.assign({},pac());pp.dental=Object.assign({},pp.dental||{});pp.dental[k]=e.target.value;S.pacs=S.pacs.map(function(x){return x.id===pp.id?pp:x;});};
+  var vi=d.querySelector("#varita-input");
+  if(vi)vi.oninput=function(e){var pp=Object.assign({},pac());pp.historia=Object.assign({},pp.historia||{},{preguntaTransformacional:e.target.value});S.pacs=S.pacs.map(function(x){return x.id===pp.id?pp:x;});};
+  var bce=d.querySelector("#btn-calc-eje");
+  if(bce)bce.onclick=function(){
+    var val=(d.querySelector("#varita-input")||{}).value||"";
+    var pp=Object.assign({},pac());
+    pp.historia=Object.assign({},pp.historia||{},{preguntaTransformacional:val});
+    var ia2=calcularEjeIA(pp);
+    var sinProgreso=!(pp.duplas_completadas&&pp.duplas_completadas.length);
+    var destino=k;
+    if(sinProgreso){pp.circuito=ia2.circuito;destino=ia2.dupla_principal;
+      if(!pp.evaluaciones[destino])pp.evaluaciones=Object.assign({},pp.evaluaciones,{[destino]:{items:{},subSels:{},notas:""}});
+    }
+    S.pacs=S.pacs.map(function(x){return x.id===pp.id?pp:x;});
+    persist(pp);
+    set({iaRes:ia2,dupla:destino});
+  };
 
   function irADupla(destKey){
     var pp=Object.assign({},pac());autoAusente(pp,k);
