@@ -372,22 +372,147 @@ var LADAS=[{c:"+506",n:"Costa Rica"},{c:"+507",n:"Panam\xe1"},{c:"+505",n:"Nicar
 function ladaOptionsHtml(sel){return LADAS.map(function(l){return '<option value="'+l.c+'"'+(l.c===sel?" selected":"")+'>'+l.c+' '+l.n+'</option>';}).join("");}
 function splitLada(tel){tel=(tel||"").trim();var m=LADAS.find(function(l){return tel.indexOf(l.c)===0;});if(m)return{lada:m.c,numero:tel.slice(m.c.length).trim()};return{lada:"+506",numero:tel};}
 function normTxt(s){return (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+var STOP_GENERICAS=new Set(["dolor","dolores","cronico","cronica","cronicos","cronicas","agudo","aguda","agudos","agudas",
+  "recurrente","recurrentes","frecuente","frecuentes","severo","severa","severos","severas","leve","leves",
+  "moderado","moderada","moderados","moderadas","general","generales","generalizada","generalizado","generalizadas","generalizados",
+  "difusa","difuso","difusas","difusos","intenso","intensa","intensos","intensas","persistente","persistentes",
+  "ocasional","ocasionales","habitual","habituales","progresivo","progresiva","progresivos","progresivas",
+  "previo","previa","previos","previas","antecedente","antecedentes","trastorno","trastornos","sindrome",
+  "cuadro","cuadros","episodio","episodios","sintoma","sintomas","signo","signos","presencia","ausencia",
+  "normal","anormal","cambio","cambios","alteracion","alteraciones","problema","problemas","molestia","molestias",
+  "afeccion","afecciones","proceso","procesos","otro","otra","otros","otras","repeticion","repeticiones",
+  "repetitivo","repetitiva","constante","constantes","continuo","continua","continuos","continuas",
+  "intermitente","intermitentes","cancer","cirugia","cirugias","tumor","tumores"]);
 function sugerirItemsDesdeHistoria(historiaTxt,du){
   var txt=normTxt(historiaTxt);
   if(!txt)return [];
+  function coincideExacto(palabras){
+    return palabras.some(function(w){
+      var esc=w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      var re=new RegExp("(^|[^a-z0-9])"+esc+"($|[^a-z0-9])");
+      return re.test(txt);
+    });
+  }
   var idxs=[];
   du.items.forEach(function(item,i){
-    var palabras=normTxt(item.label).split(/[^a-z0-9]+/).filter(function(w){return w.length>=5;});
-    var match=palabras.some(function(w){return txt.indexOf(w)>=0;});
+    var palabras=normTxt(item.label).split(/[^a-z0-9]+/).filter(function(w){return w.length>=5&&!STOP_GENERICAS.has(w);});
+    var match=coincideExacto(palabras);
     if(!match&&item.subs&&item.subs.length){
       match=item.subs.some(function(sub){
-        var subw=normTxt(sub).split(/[^a-z0-9]+/).filter(function(w){return w.length>=5;});
-        return subw.some(function(w){return txt.indexOf(w)>=0;});
+        var subw=normTxt(sub).split(/[^a-z0-9]+/).filter(function(w){return w.length>=5&&!STOP_GENERICAS.has(w);});
+        return subw.length&&coincideExacto(subw);
       });
     }
     if(match)idxs.push(i);
   });
   return idxs;
+}
+
+// ── Corrector ortográfico/léxico médico ────────────────────────────────────
+// Corrige palabras del texto libre del paciente que no coinciden con el
+// vocabulario clínico conocido, aproximándolas al término correcto más
+// cercano (distancia de Levenshtein). Si no hay un término suficientemente
+// cercano, deja la palabra tal como el paciente la escribió (no inventa).
+var LEXICO_MEDICO=null;
+function construirLexicoMedico(){
+  if(LEXICO_MEDICO)return LEXICO_MEDICO;
+  var map={};
+  function addFrase(s){
+    if(!s)return;
+    String(s).split(/[^A-Za-z\u00C0-\u017F]+/).forEach(function(wRaw){
+      if(!wRaw)return;
+      var wLow=wRaw.toLowerCase();
+      var norm=normTxt(wLow);
+      if(norm.length>=4&&!map[norm])map[norm]=wLow;
+    });
+  }
+  Object.values(D).forEach(function(du){
+    (du.items||[]).forEach(function(it){addFrase(it.label);(it.subs||[]).forEach(addFrase);});
+    (du.pivotes||[]).forEach(addFrase);
+    (du.extra||[]).forEach(addFrase);
+    addFrase(du.emocion);addFrase(du.eje);addFrase(du.nombre);
+  });
+  [
+    "cansancio","fatiga","menopausia","andropausia","hipófisis","tiroides","cáncer","carcinoma","tumor",
+    "visión","presión","hipertensión","hipotensión","diabetes","glucosa","colesterol","triglicéridos",
+    "próstata","útero","ovarios","ovario","mama","mamas","hígado","vesícula","riñón","riñones","pulmón","pulmones",
+    "corazón","estómago","intestino","colon","piel","cabello","memoria","ansiedad","depresión","insomnio",
+    "dolor","cefalea","migraña","mareo","vértigo","náusea","vómito","diarrea","estreñimiento","reflujo",
+    "gastritis","alergia","asma","bronquitis","artritis","osteoporosis","osteopenia","anemia","obesidad",
+    "sobrepeso","embarazo","parto","aborto","cesárea","menstruación","ciclo","hormonal","hormonas","tabaquismo",
+    "alcoholismo","sedentarismo","hipotiroidismo","hipertiroidismo","nódulo","nódulos","quiste","mioma",
+    "cirugía","cirugías","cicatriz","cicatrices","suplemento","suplementos","medicamento","medicamentos",
+    "silla","turca","craneofaringioma","adenoma","hipotálamo"
+  ].forEach(function(w){var norm=normTxt(w);if(!map[norm])map[norm]=w;});
+  LEXICO_MEDICO=map;
+  return LEXICO_MEDICO;
+}
+function distanciaLevenshtein(a,b){
+  var la=a.length,lb=b.length;
+  if(!la)return lb;if(!lb)return la;
+  var prev=new Array(lb+1);for(var j=0;j<=lb;j++)prev[j]=j;
+  for(var i=1;i<=la;i++){
+    var cur=[i];
+    for(var j2=1;j2<=lb;j2++){
+      var costo=a[i-1]===b[j2-1]?0:1;
+      cur[j2]=Math.min(prev[j2]+1,cur[j2-1]+1,prev[j2-1]+costo);
+    }
+    prev=cur;
+  }
+  return prev[lb];
+}
+function preservarMayuscula(original,corregida){
+  if(/^[A-ZÁÉÍÓÚÑ]/.test(original))return corregida.charAt(0).toUpperCase()+corregida.slice(1);
+  return corregida;
+}
+var NO_CORREGIR=new Set(["que","como","para","desde","hacia","cuando","donde","porque","pero","aunque","entre",
+  "sobre","hasta","segun","ademas","tambien","mismo","misma","mismos","mismas","bajo","bajos","baja","bajas",
+  "alto","altos","alta","altas","mucho","muchos","mucha","muchas","poco","pocos","poca","pocas","todo","todos",
+  "toda","todas","cada","otro","otros","otra","otras","este","esta","estos","estas","ese","esa","esos","esas",
+  "aquel","aquella","aquellos","aquellas","tiene","tengo","siente","siento","estado","forma","parte","tiempo",
+  "veces","dias","dia","semana","semanas","meses","mes","anos","ano","edad","nombre","paciente","refiere",
+  "presenta","indica","reporta","desde","hacia","cerca","lejos","dentro","fuera","arriba","abajo","adelante",
+  "atras","siempre","nunca","tambien","solo","sola","solos","solas"]);
+function corregirPalabra(w){
+  var norm=normTxt(w);
+  if(norm.length<4)return w;
+  if(NO_CORREGIR.has(norm))return w;
+  var lex=construirLexicoMedico();
+  if(lex[norm])return preservarMayuscula(w,lex[norm]);
+  // Variantes morfológicas simples (plural/género): si alguna calza con el léxico,
+  // la palabra ya es una forma válida y NO se toca (evita, p.ej., convertir
+  // "nocturnas" en "nocturnos" solo porque el léxico solo registra la otra forma).
+  var variantes=[norm.replace(/es$/,""),norm.replace(/s$/,""),norm.replace(/o$/,"a"),norm.replace(/a$/,"o"),norm.replace(/os$/,"as"),norm.replace(/as$/,"os")];
+  for(var vi=0;vi<variantes.length;vi++){
+    var v=variantes[vi];
+    if(v&&v!==norm&&v.length>=4&&lex[v])return w;
+  }
+  var claves=Object.keys(lex);
+  var maxDist=norm.length<=5?1:(norm.length<=8?2:3);
+  var mejor=null,mejorDist=Infinity;
+  for(var i=0;i<claves.length;i++){
+    var k2=claves[i];
+    if(Math.abs(k2.length-norm.length)>maxDist)continue;
+    var dist=distanciaLevenshtein(norm,k2);
+    if(dist<mejorDist){mejorDist=dist;mejor=k2;if(dist===0)break;}
+  }
+  if(mejor&&mejorDist>0&&mejorDist<=maxDist)return preservarMayuscula(w,lex[mejor]);
+  return w;
+}
+function corregirTexto(texto){
+  if(!texto)return texto;
+  return String(texto).replace(/[A-Za-z\u00C0-\u017F]{4,}/g,function(w){return corregirPalabra(w);});
+}
+var CAMPOS_TEXTO_LIBRE=["motivoConsulta","antPersonales","antFamiliares","antQuirurgicos","cicatrices",
+  "medicamentos","suplementos","otrasTerapias","diagnosticoPrincipal","contactoToxicos","hormProstata",
+  "historiaDental","alergiaAlimentos","alergiaMedicamentos","alergiaDetalle","habitosOtros","preguntaTransformacional"];
+function historiaCorregida(hRaw){
+  if(!hRaw)return hRaw;
+  var out=Object.assign({},hRaw);
+  CAMPOS_TEXTO_LIBRE.forEach(function(campo){
+    if(out[campo])out[campo]=corregirTexto(out[campo]);
+  });
+  return out;
 }
 function buildCircuito(dupla){
   var idx=SHENG.indexOf(dupla);if(idx<0)idx=0;
@@ -400,7 +525,7 @@ function siguienteEnCircuito(completadas,circuito){
 }
 
 function calcularEjeIA(p){
-  var h=(p&&p.historia)||{};
+  var h=historiaCorregida((p&&p.historia)||{});
   var txt=[h.preguntaTransformacional,h.motivoConsulta,h.antPersonales,h.antQuirurgicos,h.medicamentos,h.diagnosticoPrincipal,h.antFamiliares,h.contactoToxicos,h.hormProstata,h.historiaDental,h.otrasTerapias].filter(Boolean).join(" ").toLowerCase()||"";
   var scores={madera:0,fuego:0,tierra:0,metal:0,agua:0};
   ["tiroides","colecist","higado","h\u00edgado","menstrual","irritab","ira","bochorno","hep\u00e1tico","hormona"].forEach(function(w){if(txt.includes(w))scores.madera+=3;});
@@ -440,7 +565,7 @@ async function analizarIA(p){
 
 async function generarReporte(p){
   await new Promise(function(r){setTimeout(r,1500);});
-  var h=p.historia||{};
+  var h=historiaCorregida(p.historia||{});
   var circ=p.circuito||SHENG;
   var rk=circ.filter(function(k){return(p.duplas_completadas||[]).includes(k);})
     .map(function(k){return{key:k,pct:pctDupla(k)};}).sort(function(a,b){return b.pct-a.pct;});
@@ -599,7 +724,7 @@ async function generarPDFBase64(){
 async function enviarCorreoConPDF(p,rep,planLineas){
   var cfg=getCfg();
   if(!cfg.emailjs_service||!cfg.emailjs_template||!cfg.emailjs_public)return{ok:false,msg:"EmailJS no configurado"};
-  var h=p.historia||{};
+  var h=historiaCorregida(p.historia||{});
   var fecha=new Date().toLocaleDateString("es-CR");
 
   // Texto real de un campo editable, excluyendo el placeholder si no se escribió nada
@@ -1304,7 +1429,7 @@ function vPanel(){
       }catch(e){console.warn("analizarIA:",e.message);}
       S.analizandoId=null;
       if(!ia||!D[ia.dupla_principal]){
-        var h=(p&&p.historia)||{};
+        var h=historiaCorregida((p&&p.historia)||{});
         var txt=[h.preguntaTransformacional,h.motivoConsulta,h.antPersonales,h.medicamentos].filter(Boolean).join(" ").toLowerCase();
         var topKey="madera";
         if(/coraz|insomnio|palpitac|ansiedad/.test(txt))topKey="fuego";
@@ -1332,14 +1457,13 @@ function vPanel(){
 
 function vTablero(){
   var p=pac();if(!p)return el();
-  var h=p.historia||{};
+  var h=historiaCorregida(p.historia||{});
   var k=S.dupla;var du=D[k];
   var ev=p.evaluaciones[k]||{items:{},subSels:{},notas:""};
 
   // Pre-marcar (una sola vez por eje) los hallazgos que ya aparecen en la historia clínica del paciente
   if(!ev.autoSugerido){
-    var h0=p.historia||{};
-    var historiaTxt=[h0.motivoConsulta,h0.antPersonales,h0.antFamiliares,h0.preguntaTransformacional,h0.diagnosticoPrincipal,h0.antQuirurgicos,h0.medicamentos].filter(Boolean).join(" ");
+    var historiaTxt=[h.motivoConsulta,h.antPersonales,h.antFamiliares,h.preguntaTransformacional,h.diagnosticoPrincipal,h.antQuirurgicos,h.medicamentos].filter(Boolean).join(" ");
     var sugeridos=sugerirItemsDesdeHistoria(historiaTxt,du);
     var pp0=Object.assign({},p);
     var items0=Object.assign({},ev.items);
