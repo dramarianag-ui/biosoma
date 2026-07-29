@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pago confirmado · BIOSOMA</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; background: #F7F5EF; color: #1F2A2E; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.tarjeta { background: #fff; border-radius: 14px; padding: 40px 32px; max-width: 460px; width: 100%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,.06); }
+.spinner { width: 40px; height: 40px; border: 4px solid #E0DDD4; border-top-color: #0F6B65; border-radius: 50%; margin: 0 auto 20px; animation: girar 0.8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+h2 { color: #0F6B65; font-size: 20px; margin-bottom: 10px; }
+p { color: #4A463C; font-size: 14px; line-height: 1.5; }
+.visualizacion-codigo { font-family: monospace; font-size: 26px; font-weight: 800; color: #0F6B65; background: #EAF5EF; padding: 12px 20px; border-radius: 10px; display: inline-block; margin: 16px 0; letter-spacing: 3px; }
+.oculto { display: none; }
+.error { color: #B33A3A; }
+.pasos { text-align: left; background: #F7F5EF; border-radius: 10px; padding: 16px; margin-top: 16px; font-size: 13px; }
+.pasos p { margin-bottom: 4px; }
+a.boton { display: block; margin-top: 18px; background: #0F6B65; color: #fff; text-decoration: none; border-radius: 10px; padding: 12px; font-weight: 700; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="tarjeta">
+
+  <div id="esperando">
+    <div class="spinner"></div>
+    <h2>Confirmando su pago…</h2>
+    <p>Esto toma solo unos segundos. Por favor no cierre esta ventana.</p>
+  </div>
+
+  <div id="exito" class="oculto">
+    <div style="font-size:44px;">✅</div>
+    <h2>¡Pago confirmado!</h2>
+    <p>Su código de acceso al sistema BIOSOMA es:</p>
+    <div class="visualizacion-codigo" id="codigo-generado"></div>
+    <p>También lo enviamos a su correo. Guárdelo bien.</p>
+    <div class="pasos">
+      <p><strong>Para acceder al sistema:</strong></p>
+      <p>1. Vaya a <strong>biosomamedicell2.vercel.app</strong></p>
+      <p>2. Clic en "Soy médico"</p>
+      <p>3. Ingrese su código</p>
+    </div>
+    <a class="boton" href="https://biosomamedicell2.vercel.app" target="_blank">Entrar al sistema BIOSOMA →</a>
+  </div>
+
+  <div id="fallo" class="oculto">
+    <div style="font-size:44px;">⏳</div>
+    <h2 class="error">Su pago está tardando en confirmarse</h2>
+    <p>Si ya completó el pago, puede tardar unos minutos más en procesarse. Si el problema persiste, contáctenos a <strong>info@medicellcr.com</strong> o al <strong>+506 2447-2858</strong> indicando su correo.</p>
+  </div>
+
+</div>
+
+<script>
+var EJS_SVC = 'service_bvecnof';
+var EJS_TPL = 'template_mtirybg';
+var EJS_PUB = '49fUJAHXCNYqUi15-';
+
+async function enviarCodigoPorCorreo(datos) {
+  try {
+    await emailjs.send(EJS_SVC, EJS_TPL, {
+      to_name: datos.nombre,
+      to_email: datos.correo,
+      medico_name: 'MEDICELL / MEDISER',
+      medico_email: 'info@medicellcr.com',
+      clinica: 'Sistema BIOSOMA - MEDICELL / MEDISER',
+      fecha: new Date().toLocaleDateString('es-CR'),
+      eje_prioritario: 'Acceso activado',
+      resumen: [
+        'Bienvenido/a al Sistema BIOSOMA - MEDICELL / MEDISER',
+        '',
+        'Su suscripción ha sido activada exitosamente.',
+        '',
+        'SU CÓDIGO DE ACCESO PERSONAL:',
+        datos.codigo,
+        '',
+        'INSTRUCCIONES DE ACCESO:',
+        '1. Vaya a: biosomamedicell2.vercel.app',
+        '2. Clic en "Soy médico"',
+        '3. Ingrese su código: ' + datos.codigo,
+        '',
+        'Guarde este código en un lugar seguro.',
+        'Solo usted tiene acceso a sus pacientes.',
+        '',
+        'Para soporte: info@medicellcr.com | +506 2447-2858',
+        '',
+        'MEDICELL / MEDISER - Sistema BIOSOMA'
+      ].join('\n')
+    }, EJS_PUB);
+  } catch (mi) {
+    console.warn('EmailJS:', mi.message);
+  }
+}
+
+async function esperarConfirmacion() {
+  var correo = '';
+  try { correo = sessionStorage.getItem('biosoma_correo') || ''; } catch (e) {}
+  var nombreGuardado = '';
+  try { nombreGuardado = sessionStorage.getItem('biosoma_nombre') || ''; } catch (e) {}
+
+  if (!correo) {
+    // No sabemos qué correo buscar (ej. el médico abrió este link directo,
+    // sin pasar por el formulario). Mostramos el mensaje de espera larga.
+    document.getElementById('esperando').classList.add('oculto');
+    document.getElementById('fallo').classList.remove('oculto');
+    return;
+  }
+
+  var intentos = 0;
+  var maximoIntentos = 20; // ~40 segundos
+
+  var intervalo = setInterval(async function () {
+    intentos++;
+    try {
+      var res = await fetch('/api/onvo-check-status?correo=' + encodeURIComponent(correo));
+      var estado = await res.json();
+
+      if (estado.listo) {
+        clearInterval(intervalo);
+        await enviarCodigoPorCorreo({ nombre: estado.nombre || nombreGuardado, correo: correo, codigo: estado.codigo });
+
+        document.getElementById('esperando').classList.add('oculto');
+        document.getElementById('exito').classList.remove('oculto');
+        document.getElementById('codigo-generado').textContent = estado.codigo;
+
+        try {
+          sessionStorage.removeItem('biosoma_correo');
+          sessionStorage.removeItem('biosoma_nombre');
+        } catch (e) {}
+        return;
+      }
+
+      if (intentos >= maximoIntentos) {
+        clearInterval(intervalo);
+        document.getElementById('esperando').classList.add('oculto');
+        document.getElementById('fallo').classList.remove('oculto');
+      }
+    } catch (e) {
+      // reintenta en el siguiente ciclo
+    }
+  }, 2000);
+}
+
+esperarConfirmacion();
+</script>
+
+</body>
+</html>
