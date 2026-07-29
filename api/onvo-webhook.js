@@ -30,6 +30,72 @@ module.exports = async (req, res) => {
     const tipo = evento.type;
     const datos = evento.data || {};
 
+    // NUEVO FLUJO (Checkout Hospedado, vía link de pago recurrente):
+    // ONVO manda "checkout-session.succeeded" con el cliente ya incluido
+    // directamente en el evento -- no hace falta ir a buscar la suscripción.
+    // Usamos el id de la sesión de checkout como llave de idempotencia.
+    if (tipo === 'checkout-session.succeeded') {
+      const sessionId = datos.id;
+      const cliente = datos.customer || {};
+      const nombre = cliente.name || '';
+      const correo = cliente.email || '';
+      const telefono = cliente.phone || '';
+
+      if (!sessionId || !correo) {
+        console.error('checkout-session.succeeded sin id o correo:', evento);
+        return res.status(200).json({ recibido: true, error: 'Datos insuficientes en el evento' });
+      }
+
+      // Idempotencia: si ya existe un profesional con esta sesión, no duplicar
+      const yaExisteResp = await fetch(
+        `${SUPABASE_URL}/rest/v1/profesionales?onvo_subscription_id=eq.${encodeURIComponent(sessionId)}&select=id,codigo`,
+        {
+          headers: {
+            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        }
+      );
+      const yaExiste = await yaExisteResp.json();
+
+      if (Array.isArray(yaExiste) && yaExiste.length > 0) {
+        return res.status(200).json({ recibido: true, yaProcesado: true });
+      }
+
+      const codigoProfesional = generarCodigoProfesional();
+      const esPrueba = ONVO_SECRET_KEY.startsWith('onvo_test_') || ONVO_SECRET_KEY.startsWith('sk_test_');
+
+      const guardarResp = await fetch(`${SUPABASE_URL}/rest/v1/profesionales`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_SERVICE_ROLE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          codigo: codigoProfesional,
+          nombre,
+          correo,
+          especialidad: '', // no viaja en este evento; se puede completar luego desde el panel admin
+          rol: 'medico',
+          onvo_subscription_id: sessionId,
+          activo: true,
+          es_prueba: esPrueba
+        })
+      });
+
+      if (!guardarResp.ok) {
+        const errTxt = await guardarResp.text();
+        console.error('Error guardando profesional en Supabase (checkout-session):', errTxt);
+        return res.status(200).json({ recibido: true, error: 'No se pudo guardar en Supabase' });
+      }
+
+      return res.status(200).json({ recibido: true, codigo: codigoProfesional });
+    }
+
+    // FLUJO ANTERIOR (widget embebido / suscripción creada por API) -- se deja
+    // activo por compatibilidad, pero ya no es el camino principal.
     // ONVO envía dos eventos distintos según el momento del cobro:
     // - "payment-intent.succeeded": el PRIMER cobro de la suscripción (el que
     //   confirma el widget onvo.pay() al momento de la compra).
